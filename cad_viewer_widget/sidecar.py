@@ -1,12 +1,11 @@
-from ipywidgets import Output
-from traitlets import Unicode, CaselessStrEnum, Integer
+from traitlets import HasTraits, Unicode, CaselessStrEnum, Integer
 
 
 SIDECARS = {}
 DEFAULT = None
 
 
-class Sidecar(Output):
+class Sidecar(HasTraits):
     _model_name = Unicode("CadViewerSidecarModel").tag(sync=True)
     _model_module = Unicode("cad-viewer-widget").tag(sync=True)
     _model_module_version = Unicode("3.0.2").tag(sync=True)
@@ -29,6 +28,15 @@ class Sidecar(Output):
         allow_none=True,
     ).tag(sync=True)
     width = Integer(allow_none=True).tag(sync=True)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return False
+
+    def close(self):
+        return None
 
     def resize_sidebar(self, width):
         self.width = width

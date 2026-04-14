@@ -8,10 +8,8 @@ from textwrap import dedent
 
 import numpy as np
 
-import ipywidgets as widgets
-from ipywidgets.embed import embed_minimal_html, dependency_state
-
 from traitlets import (
+    HasTraits,
     Unicode,
     Dict,
     List,
@@ -24,7 +22,6 @@ from traitlets import (
     Callable,
     observe,
 )
-from IPython.display import HTML, update_display
 from pyparsing import ParseException
 
 from .utils import get_parser, to_json, bsphere, normalize
@@ -142,9 +139,8 @@ class AnimationTrack:
         return [self.path, self.action, tolist(self.times), tolist(self.values)]
 
 
-@widgets.register
 class CadViewerWidget(
-    widgets.Output
+    HasTraits
 ):  # pylint: disable-msg=too-many-instance-attributes
     """The CAD Viewer widget."""
 
@@ -393,6 +389,11 @@ class CadViewerWidget(
 
     measure_callback = Callable(allow_none=True)
 
+    def send(self, content=None, buffers=None):
+        # The marimo migration keeps message payload creation in place,
+        # but transport wiring is moved to the frontend integration layer.
+        self._last_sent = {"content": content, "buffers": buffers}
+
     @observe("result")
     def func(self, change):
         """
@@ -403,7 +404,7 @@ class CadViewerWidget(
                        Expected to have a "new" key with a JSON string value.
 
         The function performs the following actions based on the content of the "new" key:
-        - If "display_id" is present in the data, it updates an HTML display with an image.
+        - If "display_id" is present, it stores image metadata for the host runtime.
         - If "display_id" is not present and `self.test_func` is callable, it calls `self.test_func` with the decoded image data.
         - If "display_id" is not present and `self.test_func` is not callable, it writes the decoded image data to a file specified by "filename".
         """
@@ -411,8 +412,12 @@ class CadViewerWidget(
             data = orjson.loads(change["new"])
 
             if data.get("display_id") is not None:
-                html = f"""<img src="{data['src']}" width="{data['width']}px" height="{data['height']}px"/>"""
-                update_display(HTML(html), display_id=data["display_id"])
+                self._last_display = {
+                    "display_id": data["display_id"],
+                    "src": data.get("src"),
+                    "width": data.get("width"),
+                    "height": data.get("height"),
+                }
             else:
                 if self.test_func is not None and callable(self.test_func):
                     # pylint: disable=not-callable
@@ -1759,22 +1764,9 @@ class CadViewer:
         - This method temporarily disables pinning while exporting the HTML.
         - The state of the widget is captured and embedded in the HTML file.
         """
-        if not (self.widget.title is None or self.widget.title == ""):
-            raise RuntimeError(
-                "Export_html does not work with sidecar. Show the object again in a cell viewer"
-            )
-
-        pinning = self.pinning
-        self.pinning = False
-
-        embed_minimal_html(
-            filename,
-            title=title,
-            views=[self.widget],
-            state=dependency_state(self.widget),
+        raise NotImplementedError(
+            "export_html is tied to Jupyter embedding and is unavailable in the marimo migration state"
         )
-
-        self.pinning = pinning
 
     #
     # Custom message handling

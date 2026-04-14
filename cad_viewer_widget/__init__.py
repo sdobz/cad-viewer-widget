@@ -1,10 +1,7 @@
 import uuid
 from ._version import __version__
 
-from IPython.display import display, HTML
-
 from .widget import AnimationTrack, CadViewer, get_viewer_by_id, get_viewers_by_id
-from .sidecar import Sidecar
 
 from .sidecar import (
     get_sidecar,
@@ -17,56 +14,6 @@ from .sidecar import (
 )
 
 from .utils import display_args, viewer_args, warn
-
-
-def _jupyter_labextension_paths():
-    """
-    Called by Jupyter Lab Server to detect if it is a valid labextension and
-    to install the widget
-
-    Returns
-    =======
-    src: Source directory name to copy files from. Webpack outputs generated files
-        into this directory and Jupyter Lab copies from this directory during
-        widget installation
-    dest: Destination directory name to install widget files to. Jupyter Lab copies
-        from `src` directory into <jupyter path>/labextensions/<dest> directory
-        during widget installation
-    """
-    return [
-        {
-            "src": "labextension",
-            "dest": "cad-viewer-widget",
-        }
-    ]
-
-
-def _jupyter_nbextension_paths():
-    """
-    Called by Jupyter Notebook Server to detect if it is a valid nbextension and
-    to install the widget
-
-    Returns
-    =======
-    section: The section of the Jupyter Notebook Server to change.
-        Must be 'notebook' for widget extensions
-    src: Source directory name to copy files from. Webpack outputs generated files
-        into this directory and Jupyter Notebook copies from this directory during
-        widget installation
-    dest: Destination directory name to install widget files to. Jupyter Notebook copies
-        from `src` directory into <jupyter path>/nbextensions/<dest> directory
-        during widget installation
-    require: Path to importable AMD Javascript module inside the
-        <jupyter path>/nbextensions/<dest> directory
-    """
-    return [
-        {
-            "section": "notebook",
-            "src": "nbextension",
-            "dest": "cad-viewer-widget",
-            "require": "cad-viewer-widget/extension",
-        }
-    ]
 
 
 MESSAGES = {
@@ -99,62 +46,27 @@ def open_viewer(
 
     id_ = str(uuid.uuid4())
 
-    if title is None or title == "":
-        viewer = CadViewer(
-            title=None,
-            anchor=None,
-            cad_width=cad_width,
-            tree_width=tree_width,
-            height=height,
-            theme=theme,
-            glass=glass,
-            tools=tools,
-            pinning=pinning,
-            id_=id_,
-        )
+    viewer = CadViewer(
+        title=None if title in (None, "") else title,
+        anchor=None if title in (None, "") else anchor,
+        cad_width=cad_width,
+        tree_width=tree_width,
+        aspect_ratio=aspect_ratio,
+        height=height,
+        theme=theme,
+        glass=glass,
+        tools=tools,
+        pinning=pinning,
+        id_=id_,
+    )
 
-        display(viewer.widget)
+    if title not in (None, ""):
+        set_sidecar(title, viewer)
+        if default:
+            _set_default_sidecar(title)
 
-        image_id = f"img_{id_}"
-        html = "<div></div>"
-        display(HTML(html), display_id=image_id)
-        viewer.widget.image_id = image_id
-        error = None
-    else:
-        out = Sidecar(title=title, anchor=anchor)
-        with out:
-            try:
-                viewer = CadViewer(
-                    title=title,
-                    anchor=anchor,
-                    cad_width=cad_width,
-                    tree_width=tree_width,
-                    aspect_ratio=aspect_ratio,
-                    height=height,
-                    theme=theme,
-                    glass=glass,
-                    tools=tools,
-                    pinning=False,
-                    id_=id_,
-                )
-                display(viewer.widget)
-                error = None
-
-            except Exception as ex:
-                error = ex
-
-        if error is None:
-            out.resize_sidebar(cad_width + (0 if glass else tree_width) + 12)
-
-            set_sidecar(title, viewer)
-            if default:
-                _set_default_sidecar(title)
-
-    if error is None:
-        viewer.register_viewer()
-        return viewer
-    else:
-        raise RuntimeError(error)
+    viewer.register_viewer()
+    return viewer
 
 
 def show(
@@ -217,7 +129,7 @@ def show(
     debug=None,
 ):
     """
-    Show CAD objects in JupyterLab
+    Show CAD objects with the current viewer runtime
 
     - shapes:            Serialized nested tessellated shapes
 
