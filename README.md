@@ -1,73 +1,101 @@
 # cad-viewer-widget
 
-A Jupyter widget to view CAD objects
+A marimo-focused CAD viewer widget built on top of [three-cad-viewer](https://github.com/bernhard-42/three-cad-viewer).
 
-`cad-viewer-widgets` has its origin in [Jupyter-CadQuery](https://github.com/bernhard-42/jupyter-cadquery), which now
-has been split into 3 layers. This repo being the middle layer:
+This fork is taking the original JupyterLab or ipywidgets wrapper and reshaping it into a widget layer that can run cleanly in marimo. The rendering engine remains the same. The work in this repository is about replacing notebook-specific integration with a smaller, framework-neutral widget bridge.
+
+## Project layout
+
+The viewer stack is still split into three layers:
 
 1. **[three-cad-viewer](https://github.com/bernhard-42/three-cad-viewer)**
-   This is the complete CAD viewer written in Javascript with _[threejs](https://github.com/mrdoob/three.js/)_ being the only dependency.
+   The WebGL CAD renderer. This is the core viewer and is already independent of Jupyter.
 
-2. **cad-view-widget** (this repository)
-   A thin layer on top of _cad-viewer-widget_ that wraps the CAD viewer into an [ipywidget](https://github.com/jupyter-widgets/ipywidgets). The API documentation can be found [here](https://bernhard-42.github.io/cad-viewer-widget/cad_viewer_widget/index.html)
+2. **cad-viewer-widget** (this repository)
+   The Python and JavaScript bridge that exposes the viewer to notebook or app frontends. In this fork, the goal is marimo compatibility via a lighter widget protocol.
 
-3. **[Jupyter-CadQuery](https://github.com/bernhard-42/jupyter-cadquery)** A [CadQuery](https://github.com/CadQuery/cadquery) viewer, collecting and tessellating CadQuery objects, using cad-view-widget to visualize the objects
+3. **[jupyter-cadquery](https://github.com/bernhard-42/jupyter-cadquery)**
+   Higher-level CadQuery or build123d integration. That layer is separate from this repository and should treat this package as a viewer backend.
 
-Click on the "launch binder" icon to start _cad-viewer-widget_ on binder:
+## Status
 
-[![Binder: Latest development version](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/bernhard-42/cad-viewer-widget/master?urlpath=lab&filepath=notebooks)
+This repository is in transition from a JupyterLab-specific package to a marimo-oriented widget package.
 
-## Examples
+- The rendering path is still based on `three-cad-viewer`.
+- The existing source still contains Jupyter or ipywidgets-specific pieces.
+- The target architecture is an `anywidget`-style bridge that can render inside marimo.
+- Legacy notebooks under `notebooks/` are still useful as behavior references, but they are not the target runtime.
 
-- [Tests and demos](notebooks/Tests-and-demos.ipynb): Demonstrating the features using the sample tesssellations in [./examples](./examples)
-- [Classic OCC Bottle](notebooks/Classic-OCC-Bottle.ipynb): A real CAD example based on [python-occ](https://github.com/tpaviot/pythonocc-core)
+## Development environment
 
-## Installation
+This fork uses Nix only to provide the system runtime and frontend toolchain. Python libraries come from your virtual environment, driven by `pyproject.toml` and `environment.yml`.
 
-To install use pip:
+Requirements:
 
-    $ pip install cad_viewer_widget
+- Python
+- Node.js
+- Yarn 1.x
+- A virtual environment for Python dependencies
 
-For a development installation (requires [Node.js](https://nodejs.org >=21.1.0) and [Yarn version 1](https://classic.yarnpkg.com/)),
+If you use the included flake:
 
-    $ git clone https://github.com/bernhard-42/cad-viewer-widget.git
-    $ cd cad-viewer-widget
-    $ pip install -e . 
-    $ jupyter labextension develop . --overwrite 
+```bash
+nix develop
+```
 
-When actively developing your extension for JupyterLab, run the command:
+Then create and populate the Python environment:
 
-    $ jupyter labextension develop --overwrite cad_viewer_widget
+```bash
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -U pip
+python -m pip install -e .
+cd js && yarn install && cd ..
+```
 
-Then you need to rebuild the JS when you make a code change:
+If you are not using Nix, provide equivalent system tools yourself and then run the same virtualenv setup.
 
-    $ cd js
-    $ yarn run build
+## Build workflow
 
-You then need to refresh the JupyterLab page when your javascript changes:
-- save your notebook
-- restart the kernel
-- delete all output cells
-- refresh the browser page
+Build the JavaScript bundle and the labextension artifacts:
 
+```bash
+cd js
+yarn build:prod
+cd ..
+```
 
-## Build step
+For active frontend development:
 
-```python
+```bash
+cd js
+yarn build
+yarn watch
+```
+
+Build the Python package:
+
+```bash
 hatch build
 ```
 
-## Changes
+## marimo direction
 
-**2023-08-14**
-- Adapt to [ocp-tessellate](http://github.com/bernhard-42/ocp-tessellate.git)
-- Support version 1.8.6 of [three-cad-viewer](http://github.com/bernhard-42/three-cad-viewer.git)
-- Supports `jupyterlab>=4`, `ipywidgets>=8` and `notebook>7`
-- Dropped support for `notebook < 7.0`
-- Build process now uses pyproject.toml and hatch
+The intended end state for this fork is:
 
-**2023-01-03**
-- Added pyparsing as dependency
-- Pinned traitlets to ~5.8
-- Upgraded bottle example to occt 7.6.2
+- replace the Jupyter widget glue with a marimo-compatible widget layer
+- preserve the existing viewer protocol and renderer behavior
+- keep Python package installation in a normal virtualenv
+- keep Nix limited to interpreter and toolchain provisioning
 
+This repository is the viewer bridge, not the final application. A marimo notebook or app should import this package and use it as the rendering surface for tessellated CAD data.
+
+## Legacy references
+
+The following files remain useful while porting behavior:
+
+- `notebooks/Tests-and-demos.ipynb`
+- `notebooks/Classic-OCC-Bottle.ipynb`
+- `examples/`
+
+They document expected viewer behavior, but the long-term goal is to replace Jupyter-centric examples with marimo-native ones.
