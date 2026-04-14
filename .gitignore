@@ -11,8 +11,6 @@ node_modules/
 .vscode/targets.log
 
 # Compiled javascript
-cad_viewer_widget/nbextension/
-cad_viewer_widget/labextension/
 
 # OS X
 .DS_Store

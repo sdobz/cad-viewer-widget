@@ -1,7 +1,7 @@
 {
   "name": "cad-viewer-widget",
   "version": "3.0.2",
-  "description": "A Jupyter widget to view cad objects",
+  "description": "A marimo-focused CAD viewer runtime",
   "license": "MIT",
   "author": {
     "name": "Bernhard Walter",
@@ -14,11 +14,10 @@
     "url": "https://github.com/bernhard-42/cad-viewer-widget.git"
   },
   "keywords": [
-    "jupyter",
-    "widgets",
-    "ipython",
-    "ipywidgets",
-    "jupyterlab-extension"
+    "marimo",
+    "cad",
+    "viewer",
+    "threejs"
   ],
   "files": [
     "lib/**/*.js",
@@ -26,24 +25,19 @@
     "style/*.css"
   ],
   "scripts": {
-    "clean": "rimraf dist/ && rimraf ../cad_viewer_widget/labextension/ && rimraf ../cad_viewer_widget/nbextension",
+    "clean": "rimraf dist/",
     "prepublish": "yarn run clean && yarn run build:prod",
     "build": "webpack --mode=development",
     "build:prod": "webpack --mode=production",
-    "build:labextension": "jupyter labextension build .",
-    "build:labextension:dev": "jupyter labextension build --development True | sed '/^WARNING/,/^$/d'",
     "watch": "webpack --watch --mode=development",
     "test": "echo \"Error: no test specified\" && exit 1",
     "prettier": "npx prettier lib --check",
     "prettier:fix": "npx prettier lib --write"
   },
   "dependencies": {
-    "@jupyter-widgets/jupyterlab-manager": "^5.0.13",
-    "@jupyterlab/apputils": "^4.4.5",
     "three-cad-viewer": "3.3.4"
   },
   "devDependencies": {
-    "@jupyterlab/builder": "^4.3.5",
     "css-loader": "^7.1.2",
     "eslint": "^9.21.0",
     "eslint-config-prettier": "^10.0.2",
