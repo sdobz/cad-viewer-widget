@@ -1,4 +1,3 @@
-var _shell = null;
 var _sidecars = {};
 var _cellViewers = {};
 var _currentCadViewer = null;
@@ -50,13 +49,5 @@ export default {
 
   removeCellViewer(id) {
     delete _cellViewers[id];
-  },
-
-  setShell(shell) {
-    _shell = shell;
-  },
-
-  getShell() {
-    return _shell;
   }
 };

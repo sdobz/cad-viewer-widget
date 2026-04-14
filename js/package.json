@@ -28,8 +28,8 @@
   "scripts": {
     "clean": "rimraf dist/ && rimraf ../cad_viewer_widget/labextension/ && rimraf ../cad_viewer_widget/nbextension",
     "prepublish": "yarn run clean && yarn run build:prod",
-    "build": "webpack --mode=development && yarn run build:labextension:dev",
-    "build:prod": "webpack --mode=production && yarn run build:labextension",
+    "build": "webpack --mode=development",
+    "build:prod": "webpack --mode=production",
     "build:labextension": "jupyter labextension build .",
     "build:labextension:dev": "jupyter labextension build --development True | sed '/^WARNING/,/^$/d'",
     "watch": "webpack --watch --mode=development",
@@ -38,7 +38,6 @@
     "prettier:fix": "npx prettier lib --write"
   },
   "dependencies": {
-    "@jupyter-widgets/base": "^6.0.10",
     "@jupyter-widgets/jupyterlab-manager": "^5.0.13",
     "@jupyterlab/apputils": "^4.4.5",
     "three-cad-viewer": "3.3.4"
@@ -55,16 +54,6 @@
     "terser-webpack-plugin": "^5.3.9",
     "webpack": "^5.88.2",
     "webpack-cli": "^6.0.1"
-  },
-  "jupyterlab": {
-    "extension": "lib/labplugin",
-    "outputDir": "../cad_viewer_widget/labextension",
-    "sharedPackages": {
-      "@jupyter-widgets/base": {
-        "bundled": false,
-        "singleton": true
-      }
-    }
   },
   "packageManager": "yarn@1.22.22+sha512.a6b2f7906b721bba3d67d4aff083df04dad64c399707841b7acf00f6b133b7ac24255f2652fa22ae3534329dc6180534e98d17432037ff6fd140556e2bb3137e"
 }

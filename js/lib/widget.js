@@ -1,5 +1,3 @@
-import { DOMWidgetModel, DOMWidgetView } from "@jupyter-widgets/base";
-
 import { Viewer, Display, Timer } from "three-cad-viewer";
 
 import { decode } from "./serializer.js";
@@ -10,10 +8,70 @@ import "../style/index.css";
 
 import App from "./app.js";
 
-export class CadViewerModel extends DOMWidgetModel {
+class RuntimeModel {
+  constructor(attributes = {}) {
+    this.attributes = {};
+    this.listeners = new Map();
+    const defaults = this.defaults ? this.defaults() : {};
+    Object.assign(this.attributes, defaults, attributes);
+  }
+
+  defaults() {
+    return {};
+  }
+
+  get(key) {
+    return this.attributes[key];
+  }
+
+  set(key, value) {
+    if (typeof key === "object" && key !== null) {
+      Object.entries(key).forEach(([name, nextValue]) =>
+        this.set(name, nextValue)
+      );
+      return;
+    }
+    this.attributes[key] = value;
+  }
+
+  on(eventName, callback, context) {
+    const callbacks = this.listeners.get(eventName) || [];
+    callbacks.push({ callback, context });
+    this.listeners.set(eventName, callbacks);
+  }
+
+  trigger(eventName, payload) {
+    const callbacks = this.listeners.get(eventName) || [];
+    callbacks.forEach(({ callback, context }) =>
+      callback.call(context || this, payload)
+    );
+  }
+
+  save_changes() {
+    return undefined;
+  }
+}
+
+class RuntimeView {
+  constructor(options = {}) {
+    this.options = options;
+    this.model = options.model;
+    this.el = options.el || document.createElement("div");
+    this.initialize(options);
+  }
+
+  initialize() {}
+
+  render() {}
+
+  listenTo(model, eventName, callback) {
+    model.on(eventName, callback, this);
+  }
+}
+
+export class CadViewerModel extends RuntimeModel {
   defaults() {
     return {
-      ...super.defaults(),
       _model_name: "CadViewerModel",
       _model_module: _module,
       _model_module_version: _version,
@@ -106,7 +164,7 @@ export class CadViewerModel extends DOMWidgetModel {
   }
 }
 
-export class CadViewerView extends DOMWidgetView {
+export class CadViewerView extends RuntimeView {
   initialize(...args) {
     super.initialize(...args);
     this.lastPosition = null;
@@ -126,7 +184,7 @@ export class CadViewerView extends DOMWidgetView {
   }
 
   render() {
-    if (!this.model.rendered) {
+    if (!this.model.get("rendered")) {
       super.render();
 
       this.model.on("change:initialize", this.clearOrAddShapes, this);
@@ -176,8 +234,6 @@ export class CadViewerView extends DOMWidgetView {
 
       this.listenTo(this.model, "msg:custom", this.onCustomMessage.bind(this));
 
-      this.shell = App.getShell();
-
       // in case of embedding we need to state values later, since rendering resets them
       this.backupClipping();
 
@@ -214,7 +270,7 @@ export class CadViewerView extends DOMWidgetView {
 
       window.getCadViewers = App.getCadViewers;
       window.currentCadViewer = this;
-      this.model.rendered = true;
+      this.model.set("rendered", true);
     }
   }
 
@@ -317,15 +373,7 @@ export class CadViewerView extends DOMWidgetView {
   }
 
   _barHandler(index, tab) {
-    if (this.title === tab.title.label) {
-      this.shell._rightHandler.sideBar.tabCloseRequested.disconnect(
-        this._barHandler,
-        this
-      );
-
-      // this will trigger dispose()
-      this.widget.title.owner.dispose();
-    }
+    return undefined;
   }
 
   resize = (rect) => {
