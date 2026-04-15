@@ -6,7 +6,7 @@ var path = require("path");
 // stored in a separate local variable.
 var rules = [
   { test: /\.css$/, use: ["style-loader", "css-loader"] },
-  { test: /\.svg$/, use: ["svg-inline-loader"] },
+  { test: /\.svg$/, use: ["svg-inline-loader"] }
 ];
 
 var minimize = false;
@@ -19,7 +19,7 @@ module.exports = {
     publicPath: "auto"
   },
   devtool: false,
-  resolve: { extensions: ['.js', '.json'] },
+  resolve: { extensions: [".js", ".json"] },
   optimization: {
     minimize: minimize,
     minimizer: [
@@ -33,6 +33,6 @@ module.exports = {
     ]
   },
   module: {
-    rules: rules,
+    rules: rules
   }
-}
+};

@@ -1958,3 +1958,96 @@ class CadViewer:
                 """
             )
         )
+
+    def _repr_html_(self):
+        """
+        Marimo-compatible display hook for rendering CadViewer in notebooks.
+        
+        Returns an HTML string containing the viewer state and a placeholder for
+        the 3D renderer that will be initialized via JavaScript.
+        """
+        # Generate a unique ID for this viewer instance
+        container_id = f"cadviewer-{id(self)}"
+        
+        # Get the current widget state
+        state = self.status()
+        state_json = orjson.dumps(state).decode("utf-8")
+        
+        # Load the JS bundle (we'll serve it from the package dist folder)
+        bundle_path = Path(__file__).parent.parent / "js" / "dist" / "index.js"
+        
+        if not bundle_path.exists():
+            # Fallback: show state as JSON if bundle not available
+            return f"""
+            <div id="{container_id}" style="border: 1px solid #ccc; padding: 10px;">
+                <h3>CadViewer (JS bundle not found)</h3>
+                <pre>{state_json}</pre>
+            </div>
+            """
+        
+        # Read the JS bundle
+        with open(bundle_path, "rb") as f:
+            bundle_content = f.read()
+        
+        # Base64 encode for embedding
+        bundle_b64 = base64.b64encode(bundle_content).decode("utf-8")
+        
+        # Generate HTML with embedded bundle and viewer initialization
+        html = f"""
+        <div id="{container_id}" style="width: 100%; height: 600px; border: 1px solid #ddd; position: relative;">
+            <div id="{container_id}-canvas" style="width: 100%; height: 100%;"></div>
+        </div>
+        
+        <script>
+        (function() {{
+            // Decode and create blob from base64-encoded bundle
+            const binaryString = atob("{bundle_b64}");
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {{
+                bytes[i] = binaryString.charCodeAt(i);
+            }}
+            const blob = new Blob([bytes], {{type: 'application/javascript'}});
+            const url = URL.createObjectURL(blob);
+            
+            // Load the bundle as a module
+            import(url).then((module) => {{
+                // Extract viewer classes from bundle
+                const CadViewerModel = module.CadViewerModel;
+                const CadViewerView = module.CadViewerView;
+                
+                // Create runtime host
+                const model = new CadViewerModel({{
+                    shapes: {orjson.dumps(state.get("shapes", [])).decode("utf-8")},
+                    states: {orjson.dumps(state.get("states", {{}})).decode("utf-8")},
+                    tracks: {orjson.dumps(state.get("tracks", [])).decode("utf-8")},
+                    cad_width: {state.get("cad_width", 800)},
+                    height: {state.get("height", 600)},
+                    tree_width: {state.get("tree_width", 240)},
+                    theme: "{state.get("theme", "browser")}",
+                    tools: {"true" if state.get("tools", True) else "false"},
+                    glass: {"true" if state.get("glass", False) else "false"},
+                    pinning: {"true" if state.get("pinning", False) else "false"},
+                }});
+                
+                const view = new CadViewerView({{
+                    model: model,
+                    el: document.getElementById("{container_id}-canvas")
+                }});
+                
+                view.render();
+                
+                // Store references for later access
+                document.getElementById("{container_id}").cadViewerModel = model;
+                document.getElementById("{container_id}").cadViewerView = view;
+                
+                // Clean up blob URL
+                URL.revokeObjectURL(url);
+            }}).catch((err) => {{
+                console.error("Failed to load CadViewer bundle:", err);
+                document.getElementById("{container_id}").innerHTML = 
+                    "<p style='color: red;'>Error loading 3D viewer: " + err.message + "</p>";
+            }});
+        }})();
+        </script>
+        """
+        return html

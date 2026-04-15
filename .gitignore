@@ -1,4 +1,5 @@
 .direnv
+__marimo__
 .venv
 *.egg-info/
 .ipynb_checkpoints/

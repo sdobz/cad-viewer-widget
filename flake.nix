@@ -18,6 +18,7 @@
             python
             python.pkgs.pip
             python.pkgs.virtualenv
+            python.pkgs.conda
             pkgs.nodejs_20   # required by @jupyterlab/builder
             pkgs.yarn        # used by the hatch build hooks
           ];
