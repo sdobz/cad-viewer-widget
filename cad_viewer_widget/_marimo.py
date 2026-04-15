@@ -1,103 +1,184 @@
-"""
-Marimo integration helpers for CadViewer.
+"""Marimo integration helpers for CadViewer."""
 
-Provides utilities to display CadViewer objects in marimo notebooks.
-"""
-
-import json
-import uuid
-from typing import Optional
+import base64
+import gzip
+import hashlib
+from html import escape
 from pathlib import Path
+from typing import Optional
+from uuid import uuid4
+
+import numpy as np
+import orjson
+
+
+def _ndarray_to_wire(arr: np.ndarray) -> dict:
+    """Encode numpy arrays in the JS serializer wire format.
+
+    The frontend already understands objects of the form:
+    {buffer, codec, dtype, shape}
+    so we reuse that stable schema instead of expanding arrays to JSON lists.
+    """
+    if arr.dtype in (np.int32, np.int64, np.uint64):
+        arr = arr.astype(np.uint32, order="C")
+    elif not arr.flags["C_CONTIGUOUS"]:
+        arr = np.ascontiguousarray(arr)
+
+    return {
+        "buffer": base64.b64encode(arr.ravel().tobytes()).decode("ascii"),
+        "codec": "b64",
+        "dtype": str(arr.dtype),
+        "shape": list(arr.shape),
+    }
+
+
+def _orjson_default(obj):
+    """Serialize numpy-heavy viewer state compactly."""
+    if isinstance(obj, np.ndarray):
+        return _ndarray_to_wire(obj)
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    raise TypeError(f"Type is not JSON serializable: {type(obj)}")
+
+
+def _bundle_path() -> Optional[Path]:
+    """Return the local bundle path for marimo rendering."""
+    root = Path(__file__).resolve().parents[1]
+    candidates = [
+        root / "js" / "dist" / "index.js",
+        Path(__file__).resolve().parent / "static" / "index.js",
+    ]
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def _viewer_state(viewer) -> dict:
+    """Collect a stateless snapshot for JS initialization."""
+    state = viewer.status(all=True)
+    state.setdefault("initialize", False)
+    state.setdefault("disposed", False)
+    state.setdefault("debug", False)
+    state.setdefault("result", "")
+    state.setdefault("rendered", False)
+    return state
+
+
+def _gzip_b64(data: bytes) -> str:
+    """Return gzip-compressed bytes encoded as ASCII base64."""
+    return base64.b64encode(gzip.compress(data, compresslevel=6)).decode("ascii")
 
 
 def cadviewer_to_html(viewer) -> str:
-    """
-    Convert a CadViewer to HTML for marimo display.
-    
-    Usage:
-        import marimo as mo
-        from cad_viewer_widget import show
-        from cad_viewer_widget._marimo import cadviewer_to_html
-        
-        cv = show(shapes, ...)
-        mo.Html(cadviewer_to_html(cv))
-    
-    Parameters
-    ----------
-    viewer : CadViewer
-        The viewer object to render
-        
-    Returns
-    -------
-    str
-        HTML string with embedded viewer
-    """
-    from .widget import CadViewer
-    
-    if not isinstance(viewer, CadViewer):
-        raise TypeError(f"Expected CadViewer, got {type(viewer)}")
-    
-    container_id = f"cad-{uuid.uuid4().hex[:8]}"
-    
-    # Prepare viewer state
-    viewer_state = {
-        "id": viewer.widget.id,
-        "shapes": dict(viewer.widget.shapes) if viewer.widget.shapes else {},
-        "states": dict(viewer.widget.states) if viewer.widget.states else {},
-        "tracks": [t.__dict__ if hasattr(t, '__dict__') else t for t in viewer.tracks],
-        # Camera
-        "position": list(viewer.widget.position) if viewer.widget.position else None,
-        "quaternion": list(viewer.widget.quaternion) if viewer.widget.quaternion else None,
-        "target": list(viewer.widget.target) if viewer.widget.target else None,
-        "zoom": float(viewer.widget.zoom),
-        # UI  
-        "cad_width": int(viewer.widget.cad_width),
-        "height": int(viewer.widget.height),
-        "glass": bool(viewer.widget.glass),
-        "tools": bool(viewer.widget.tools),
-        "theme": str(viewer.widget.theme),
-        "grid": viewer.widget.grid,
-        "axes": bool(viewer.widget.axes),
-        "ortho": bool(viewer.widget.ortho),
-        "control": str(viewer.widget.control),
-        "up": str(viewer.widget.up),
-    }
-    
-    # Build HTML with inline JS initialization
-    html = f'''<div id="{container_id}" style="width: {viewer.widget.cad_width}px; height: {viewer.widget.height}px; border: 1px solid #ddd; position: relative; background: #f5f5f5;">
-  <div style="padding: 20px; text-align: center; color: #666;">
-    <p>CAD Viewer (WIP: marimo integration in progress)</p>
-    <p>Shapes: {len(viewer.widget.shapes)} | Tracks: {len(viewer.tracks)}</p>
-    <details>
-      <summary>Viewer State</summary>
-      <pre style="background: #f9f9f9; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 11px;">{json.dumps(viewer_state, indent=2, default=str)}</pre>
-    </details>
-  </div>
-</div>'''
-    
-    return html
+    """Serialize a CadViewer into compact self-contained marimo HTML."""
+    bundle = _bundle_path()
+    state = _viewer_state(viewer)
+
+    state_bytes = orjson.dumps(state, default=_orjson_default)
+    state_b64 = _gzip_b64(state_bytes)
+
+    width = state.get("cad_width", 800)
+    height = state.get("height", 600)
+
+    container_id = f"cvw-{uuid4().hex}"
+    error_id = f"{container_id}-error"
+
+    if bundle is None:
+        state_json_escaped = escape(state_bytes.decode("utf-8"))
+        return f"""
+<div style="border:1px solid #d8d8d8;padding:12px;border-radius:8px;">
+  <div style="font-weight:600;">CadViewer bundle not found</div>
+  <div style="margin:6px 0 0;">Expected one of: js/dist/index.js or cad_viewer_widget/static/index.js</div>
+  <details style="margin-top:10px;">
+    <summary>Serialized state</summary>
+    <pre style="margin-top:8px;max-height:300px;overflow:auto;">{state_json_escaped}</pre>
+  </details>
+</div>
+"""
+
+    bundle_bytes = bundle.read_bytes()
+    bundle_b64 = _gzip_b64(bundle_bytes)
+    bundle_hash = hashlib.sha256(bundle_bytes).hexdigest()[:16]
+
+    return f"""
+<div id="{container_id}" style="width:{width}px;height:{height}px;max-width:100%;"></div>
+<div id="{error_id}" style="display:none;color:#b91c1c;margin-top:8px;"></div>
+<script>
+(async () => {{
+  const host = document.getElementById("{container_id}");
+  const errorNode = document.getElementById("{error_id}");
+
+  const fail = (message) => {{
+    if (errorNode) {{
+      errorNode.style.display = "block";
+      errorNode.textContent = message;
+    }}
+  }};
+
+  const b64ToBytes = (text) => {{
+    const binary = atob(text);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) {{
+      bytes[index] = binary.charCodeAt(index);
+    }}
+    return bytes;
+  }};
+
+  const gunzipText = async (text) => {{
+    if (typeof DecompressionStream === "undefined") {{
+      throw new Error("This browser does not support DecompressionStream for gzip payloads");
+    }}
+    const bytes = b64ToBytes(text);
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+    return await new Response(stream).text();
+  }};
+
+  const ensureBundle = async () => {{
+    if (window.CadViewerWidget && typeof window.CadViewerWidget.mountCadViewer === "function") {{
+      return;
+    }}
+
+    window.__cadViewerWidgetBundleCache = window.__cadViewerWidgetBundleCache || {{}};
+    window.__cadViewerWidgetBundlePromises = window.__cadViewerWidgetBundlePromises || {{}};
+
+    if (window.__cadViewerWidgetBundlePromises["{bundle_hash}"]) {{
+      await window.__cadViewerWidgetBundlePromises["{bundle_hash}"];
+      return;
+    }}
+
+    window.__cadViewerWidgetBundlePromises["{bundle_hash}"] = (async () => {{
+      const source = await gunzipText("{bundle_b64}");
+      window.__cadViewerWidgetBundleCache["{bundle_hash}"] = source;
+
+      const script = document.createElement("script");
+      script.type = "text/javascript";
+      script.text = source;
+      document.head.appendChild(script);
+    }})();
+
+    await window.__cadViewerWidgetBundlePromises["{bundle_hash}"];
+  }};
+
+  try {{
+    await ensureBundle();
+    const state = JSON.parse(await gunzipText("{state_b64}"));
+    const api = window.CadViewerWidget;
+    if (!api || typeof api.mountCadViewer !== "function") {{
+      fail("CadViewerWidget bundle loaded but mount API is unavailable");
+      return;
+    }}
+    api.mountCadViewer(host, state);
+  }} catch (error) {{
+    fail(`Failed to mount viewer: ${{error.message}}`);
+  }}
+}})();
+</script>
+"""
 
 
 def make_cadviewer_displayable(viewer):
-    """
-    Wrap a CadViewer for marimo display via mo.Html().
-    
-    Usage:
-        import marimo as mo
-        from cad_viewer_widget import show
-        from cad_viewer_widget._marimo import make_cadviewer_displayable
-        
-        cv = show(shapes, ...)
-        mo.Html(make_cadviewer_displayable(cv))
-    
-    Parameters
-    ----------
-    viewer : CadViewer
-        The viewer object to wrap
-        
-    Returns
-    -------
-    str
-        HTML representation suitable for mo.Html()
-    """
+    """Backward-compatible helper used by notebooks/tests."""
     return cadviewer_to_html(viewer)

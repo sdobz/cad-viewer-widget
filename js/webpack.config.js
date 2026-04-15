@@ -16,7 +16,11 @@ module.exports = {
   output: {
     filename: "index.js",
     path: path.resolve(__dirname, "dist"),
-    publicPath: "auto"
+    publicPath: "auto",
+    library: {
+      name: "CadViewerWidget",
+      type: "window"
+    }
   },
   devtool: false,
   resolve: { extensions: [".js", ".json"] },

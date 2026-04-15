@@ -1,134 +1,74 @@
-const MAP_HEX = {
-  0: 0, 1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6,
-  7: 7, 8: 8, 9: 9, a: 10, b: 11, c: 12, d: 13,
-  e: 14, f: 15, A: 10, B: 11, C: 12, D: 13,
-  E: 14, F: 15
-};
-
-function fromHex(hexString) {
-  const bytes = new Uint8Array(Math.floor((hexString || "").length / 2));
-  let i;
-  for (i = 0; i < bytes.length; i++) {
-      const a = MAP_HEX[hexString[i * 2]];
-      const b = MAP_HEX[hexString[i * 2 + 1]];
-      if (a === undefined || b === undefined) {
-          break;
-      }
-      bytes[i] = (a << 4) | b;
+// Decode a binary buffer sent by anywidget (DataView / ArrayBuffer / Uint8Array / base64 string)
+// into a contiguous ArrayBuffer ready for typed-array construction.
+function toArrayBuffer(bufferLike) {
+  if (typeof bufferLike === "string") {
+    // anywidget encodes memoryview as base64
+    const binary = atob(bufferLike);
+    const u8 = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) u8[i] = binary.charCodeAt(i);
+    return u8.buffer;
   }
-  return i === bytes.length ? bytes : bytes.slice(0, i);
+  // DataView implements ArrayBufferView, so handle it first.
+  if (ArrayBuffer.isView(bufferLike)) {
+    const u8 = new Uint8Array(
+      bufferLike.buffer,
+      bufferLike.byteOffset,
+      bufferLike.byteLength
+    );
+    return u8.byteOffset === 0 && u8.byteLength === u8.buffer.byteLength
+      ? u8.buffer
+      : u8.buffer.slice(u8.byteOffset, u8.byteOffset + u8.byteLength);
+  }
+  if (bufferLike instanceof ArrayBuffer) {
+    return bufferLike;
+  }
+  throw new Error(
+    "cad-viewer-widget: unexpected buffer type " +
+      Object.prototype.toString.call(bufferLike)
+  );
 }
 
-function fromB64(s) {
-  let bytes = atob(s);
-  let uint = new Uint8Array(bytes.length);
-  for (var i = 0; i < bytes.length; i++) uint[i] = bytes[i].charCodeAt(0);
-  return uint;
+// Decode a typed-array buffer descriptor sent from Python via anywidget.
+// obj = { shape: [N], dtype: "float32"|"uint32", buffer: <DataView|ArrayBuffer> }
+function convertBuffer(obj) {
+  const ab = toArrayBuffer(obj.buffer);
+  if (obj.dtype === "float32") return new Float32Array(ab);
+  if (obj.dtype === "uint32") return new Uint32Array(ab);
+  if (obj.dtype === "int32") return new Int32Array(ab);
+  throw new Error("cad-viewer-widget: unknown dtype " + obj.dtype);
 }
 
-
+// data = { data: { shapes: <tree>, states: { "/id": [1,1], ... } } }
+// Mutates the tree in-place: converts buffer descriptors to typed arrays
+// and attaches state from the states map to each node.
 function decode(data) {
-  function convert(obj) {
-      var result;
-      if (typeof obj.buffer == "string") {
-          var buffer;
-          if (obj.codec === "b64") {
-              buffer = fromB64(obj.buffer);
-          } else {
-              buffer = fromHex(obj.buffer);
-          }
-          if (obj.dtype === "float32") {
-              result = new Float32Array(buffer.buffer);
-          } else if (obj.dtype === "int32") {
-              result = new Uint32Array(buffer.buffer);
-          } else if (obj.dtype === "uint32") {
-              result = new Uint32Array(buffer.buffer);
-          } else {
-              console.log("Error: unknown dtype", obj.dtype);
-          }
-      } else if (Array.isArray(obj)) {
-          result = [];
-          for (var arr of obj) {
-              result.push(convert(arr));
-          }
-          return result;
-      } else {
-          console.log("Error: unknown buffer type", obj.buffer);
-      }
-      return result;
+  const payload = data.data;
+  const stateMap = payload.states || {};
+
+  function walk(node) {
+    if (Array.isArray(node)) {
+      node.forEach(walk);
+      return;
+    }
+    if (!node || typeof node !== "object") return;
+
+    if (node.type === "shapes") {
+      const s = node.shape;
+      s.vertices = convertBuffer(s.vertices);
+      s.normals = convertBuffer(s.normals);
+      s.triangles = convertBuffer(s.triangles);
+      // s.edges is a plain nested JS array produced by to_json — leave as-is
+    }
+
+    // Attach visibility state; default [faces visible, edges visible]
+    node.state = stateMap[node.id] || [1, 1];
+
+    if (Array.isArray(node.parts)) {
+      node.parts.forEach(walk);
+    }
   }
 
-  // function combineFloatArrays(input) {
-  //     let totalLength = 0;
-  //     for (let i = 0; i < input.length; i++) {
-  //         totalLength += input[i].length;
-  //     }
-  //     let output = new Float32Array(totalLength);
-  //     let offset = 0;
-  //     for (let i = 0; i < input.length; i++) {
-  //         output.set(input[i], offset);
-  //         offset += input[i].length;
-  //     }
-  //     return output;
-  // }
-
-  function walk(obj) {
-      var type = null;
-      for (var attr in obj) {
-          if (attr === "parts") {
-              for (var i in obj.parts) {
-                  walk(obj.parts[i]);
-              }
-
-          } else if (attr === "type") {
-              type = obj.type;
-
-          } else if (attr === "shape") {
-              if (type === "shapes") {
-                  if (obj.shape.ref === undefined) {
-                      obj.shape.vertices = convert(obj.shape.vertices);
-                      obj.shape.obj_vertices = convert(obj.shape.obj_vertices);
-                      obj.shape.normals = convert(obj.shape.normals);
-                      obj.shape.edge_types = convert(obj.shape.edge_types);
-                      obj.shape.face_types = convert(obj.shape.face_types);
-                      obj.shape.triangles = convert(obj.shape.triangles);
-                      obj.shape.triangles_per_face = convert(obj.shape.triangles_per_face);
-                      obj.shape.edges = convert(obj.shape.edges);
-                      obj.shape.segments_per_edge = convert(obj.shape.segments_per_edge);
-                  } else {
-                      const ind = obj.shape.ref;
-                      if (ind !== undefined) {
-                          obj.shape = instances[ind];
-                      }
-                  }
-              } else if (type === "edges") {
-                  obj.shape.edges = convert(obj.shape.edges);
-                  obj.shape.segments_per_edge = convert(obj.shape.segments_per_edge);
-                  obj.shape.obj_vertices = convert(obj.shape.obj_vertices);
-              } else {
-                  obj.shape.obj_vertices = convert(obj.shape.obj_vertices);
-              }
-          }
-      }
-  }
-  
-  const instances = data.data.instances;
-
-  data.data.instances.forEach((instance) => {
-      instance.vertices = convert(instance.vertices);
-      instance.obj_vertices = convert(instance.obj_vertices);
-      instance.normals = convert(instance.normals);
-      instance.edge_types = convert(instance.edge_types);
-      instance.face_types = convert(instance.face_types);
-      instance.triangles = convert(instance.triangles);
-      instance.triangles_per_face = convert(instance.triangles_per_face);
-      instance.edges = convert(instance.edges);
-      instance.segments_per_edge = convert(instance.segments_per_edge);
-  });
-
-  walk(data.data.shapes);
-
-  data.data.instances = []
+  walk(payload.shapes);
 }
 
 export { decode };

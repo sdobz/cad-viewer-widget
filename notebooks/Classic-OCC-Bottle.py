@@ -383,9 +383,10 @@ def _(bottle, render, show):
         control="trackball",
         grid=(True, True, True),
         transparent=True,
-        pinning=True
+        pinning=False,
     )
-    return
+    cv
+    return (cv,)
 
 
 @app.cell(hide_code=True)
@@ -398,14 +399,17 @@ def _(mo):
 
 @app.cell
 def _(bottle, render, show):
-    cv_1 = show(render(bottle, 'Bottle', mesh_quality=0.25)[0], height=800, title='OCC1', anchor='split-right', axes=True, ortho=True, control='orbit', grid=(False, False, False), transparent=True)
-    return
+    # Note: title/anchor sidecar features are Jupyter-only; viewer renders inline here
+    cv_1 = show(render(bottle, 'Bottle', mesh_quality=0.25)[0], height=800, axes=True, ortho=True, control='orbit', grid=(False, False, False), transparent=True)
+    cv_1
+    return (cv_1,)
 
 
 @app.cell
 def _(bottle, render, show):
-    cv_2 = show(render(bottle, 'Bottle', mesh_quality=0.25)[0], height=800, title='OCC2', anchor='right', control='trackball', ortho=True)
-    return
+    cv_2 = show(render(bottle, 'Bottle', mesh_quality=0.25)[0], height=800, control='trackball', ortho=True)
+    cv_2
+    return (cv_2,)
 
 
 @app.cell(hide_code=True)
@@ -417,19 +421,19 @@ def _(mo):
 
 
 @app.cell
-def _(CadViewer, bottle, render):
-    import uuid
-    from IPython.display import display, HTML
-    pinning = True
-    cv_3 = CadViewer(height=800, pinning=pinning)
-    display(cv_3.widget)
-    if pinning:
-        image_id = 'img_' + str(uuid.uuid4())
-        html = '<div></div>'
-        display(HTML(html), display_id=image_id)
-        cv_3.widget.image_id = image_id
-    cv_3.add_shapes(*render(bottle, 'Bottle', mesh_quality=0.25), axes=True, ortho=True, control='trackball', grid=(False, False, False), transparent=True)
-    return
+def _(bottle, render, show):
+    cv_3 = show(
+        render(bottle, 'Bottle', mesh_quality=0.25)[0],
+        height=800,
+        pinning=False,
+        axes=True,
+        ortho=True,
+        control='trackball',
+        grid=(False, False, False),
+        transparent=True,
+    )
+    cv_3
+    return (cv_3,)
 
 
 @app.cell(hide_code=True)

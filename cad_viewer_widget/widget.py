@@ -51,6 +51,90 @@ def get_viewers_by_id():
     return VIEWER
 
 
+def _load_anywidget_esm():
+        """Build an AnyWidget Front-End Module around the existing webpack bundle."""
+        bundle_path = Path(__file__).resolve().parents[1] / "js" / "dist" / "index.js"
+        if not bundle_path.exists():
+                return dedent(
+                        """
+                        export default {
+                            render({ el }) {
+                                el.textContent = "cad-viewer-widget frontend bundle not found";
+                            },
+                        };
+                        """
+                )
+
+        bundle = bundle_path.read_text(encoding="utf-8")
+        return bundle + dedent(
+                """
+
+                function ensureBundle() {
+                    if (!globalThis.CadViewerWidget) {
+                        throw new Error("CadViewerWidget bundle did not initialize");
+                    }
+                    return globalThis.CadViewerWidget;
+                }
+
+                function adaptModel(model) {
+                    const listeners = [];
+
+                    return {
+                        get(key) {
+                            return model.get(key);
+                        },
+                        set(key, value) {
+                            model.set(key, value);
+                        },
+                        save_changes() {
+                            model.save_changes();
+                        },
+                        send(content, callbacks, buffers) {
+                            model.send(content, callbacks, buffers);
+                        },
+                        on(eventName, callback, context) {
+                            const wrapped = (...args) => callback.call(context ?? model, ...args);
+                            listeners.push([eventName, wrapped]);
+                            model.on(eventName, wrapped);
+                            return wrapped;
+                        },
+                        off(eventName, callback) {
+                            model.off(eventName, callback);
+                        },
+                        disposeListeners() {
+                            listeners.forEach(([eventName, callback]) => model.off(eventName, callback));
+                            listeners.length = 0;
+                        },
+                    };
+                }
+
+                export default {
+                    render({ model, el }) {
+                        const api = ensureBundle();
+                        const adaptedModel = adaptModel(model);
+                        const view = new api.CadViewerView({ model: adaptedModel, el });
+                        view.render();
+
+                        if (adaptedModel.get("shapes") != null) {
+                            view.showViewer();
+                            view.addShapes();
+                        }
+
+                        return () => {
+                            adaptedModel.disposeListeners();
+                            if (view.observer != null) {
+                                view.observer.disconnect();
+                            }
+                            if (view.viewer != null && !view.disposed) {
+                                view.dispose();
+                            }
+                        };
+                    },
+                };
+                """
+        )
+
+
 # pylint: disable=too-few-public-methods
 class AnimationTrack:
     # pylint: disable=line-too-long
@@ -139,17 +223,41 @@ class AnimationTrack:
         return [self.path, self.action, tolist(self.times), tolist(self.values)]
 
 
+_ANYWIDGET_CLASS = None
+
+
+def _get_widget_class():
+    """Create or return the runtime widget class.
+
+    Importing anywidget at module import time can deadlock with marimo's
+    formatter registration, so we load it lazily when first constructing
+    a viewer instance.
+    """
+    global _ANYWIDGET_CLASS
+    if _ANYWIDGET_CLASS is not None:
+        return _ANYWIDGET_CLASS
+
+    try:
+        import anywidget
+
+        class AnyCadViewerWidget(anywidget.AnyWidget, CadViewerWidget):
+            _esm = _load_anywidget_esm()
+
+        _ANYWIDGET_CLASS = AnyCadViewerWidget
+    except Exception:
+        _ANYWIDGET_CLASS = CadViewerWidget
+
+    return _ANYWIDGET_CLASS
+
+
 class CadViewerWidget(
     HasTraits
 ):  # pylint: disable-msg=too-many-instance-attributes
     """The CAD Viewer widget."""
 
-    _view_name = Unicode("CadViewerView").tag(sync=True)
-    _model_name = Unicode("CadViewerModel").tag(sync=True)
-    _view_module = Unicode("cad-viewer-widget").tag(sync=True)
-    _model_module = Unicode("cad-viewer-widget").tag(sync=True)
-    _view_module_version = Unicode("3.0.2").tag(sync=True)
-    _model_module_version = Unicode("3.0.2").tag(sync=True)
+    def send(self, content=None, buffers=None):
+        # Fallback transport hook for non-anywidget hosts.
+        self._last_sent = {"content": content, "buffers": buffers}
 
     #
     # Internal id
@@ -389,11 +497,6 @@ class CadViewerWidget(
 
     measure_callback = Callable(allow_none=True)
 
-    def send(self, content=None, buffers=None):
-        # The marimo migration keeps message payload creation in place,
-        # but transport wiring is moved to the frontend integration layer.
-        self._last_sent = {"content": content, "buffers": buffers}
-
     @observe("result")
     def func(self, change):
         """
@@ -499,7 +602,8 @@ class CadViewer:
         if tree_width < 240:
             raise ValueError("Ensure tree_width >= 240")
 
-        self.widget = CadViewerWidget(
+        widget_cls = _get_widget_class()
+        self.widget = widget_cls(
             cad_width=cad_width,
             height=height,
             tree_width=tree_width,
@@ -1960,94 +2064,13 @@ class CadViewer:
         )
 
     def _repr_html_(self):
-        """
-        Marimo-compatible display hook for rendering CadViewer in notebooks.
-        
-        Returns an HTML string containing the viewer state and a placeholder for
-        the 3D renderer that will be initialized via JavaScript.
-        """
-        # Generate a unique ID for this viewer instance
-        container_id = f"cadviewer-{id(self)}"
-        
-        # Get the current widget state
-        state = self.status()
-        state_json = orjson.dumps(state).decode("utf-8")
-        
-        # Load the JS bundle (we'll serve it from the package dist folder)
-        bundle_path = Path(__file__).parent.parent / "js" / "dist" / "index.js"
-        
-        if not bundle_path.exists():
-            # Fallback: show state as JSON if bundle not available
-            return f"""
-            <div id="{container_id}" style="border: 1px solid #ccc; padding: 10px;">
-                <h3>CadViewer (JS bundle not found)</h3>
-                <pre>{state_json}</pre>
-            </div>
-            """
-        
-        # Read the JS bundle
-        with open(bundle_path, "rb") as f:
-            bundle_content = f.read()
-        
-        # Base64 encode for embedding
-        bundle_b64 = base64.b64encode(bundle_content).decode("utf-8")
-        
-        # Generate HTML with embedded bundle and viewer initialization
-        html = f"""
-        <div id="{container_id}" style="width: 100%; height: 600px; border: 1px solid #ddd; position: relative;">
-            <div id="{container_id}-canvas" style="width: 100%; height: 100%;"></div>
-        </div>
-        
-        <script>
-        (function() {{
-            // Decode and create blob from base64-encoded bundle
-            const binaryString = atob("{bundle_b64}");
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {{
-                bytes[i] = binaryString.charCodeAt(i);
-            }}
-            const blob = new Blob([bytes], {{type: 'application/javascript'}});
-            const url = URL.createObjectURL(blob);
-            
-            // Load the bundle as a module
-            import(url).then((module) => {{
-                // Extract viewer classes from bundle
-                const CadViewerModel = module.CadViewerModel;
-                const CadViewerView = module.CadViewerView;
-                
-                // Create runtime host
-                const model = new CadViewerModel({{
-                    shapes: {orjson.dumps(state.get("shapes", [])).decode("utf-8")},
-                    states: {orjson.dumps(state.get("states", {{}})).decode("utf-8")},
-                    tracks: {orjson.dumps(state.get("tracks", [])).decode("utf-8")},
-                    cad_width: {state.get("cad_width", 800)},
-                    height: {state.get("height", 600)},
-                    tree_width: {state.get("tree_width", 240)},
-                    theme: "{state.get("theme", "browser")}",
-                    tools: {"true" if state.get("tools", True) else "false"},
-                    glass: {"true" if state.get("glass", False) else "false"},
-                    pinning: {"true" if state.get("pinning", False) else "false"},
-                }});
-                
-                const view = new CadViewerView({{
-                    model: model,
-                    el: document.getElementById("{container_id}-canvas")
-                }});
-                
-                view.render();
-                
-                // Store references for later access
-                document.getElementById("{container_id}").cadViewerModel = model;
-                document.getElementById("{container_id}").cadViewerView = view;
-                
-                // Clean up blob URL
-                URL.revokeObjectURL(url);
-            }}).catch((err) => {{
-                console.error("Failed to load CadViewer bundle:", err);
-                document.getElementById("{container_id}").innerHTML = 
-                    "<p style='color: red;'>Error loading 3D viewer: " + err.message + "</p>";
-            }});
-        }})();
-        </script>
-        """
-        return html
+        """Fallback HTML path for hosts that do not support widget mime bundles."""
+        from ._marimo import cadviewer_to_html
+
+        return cadviewer_to_html(self)
+
+    def _repr_mimebundle_(self, *args, **kwargs):
+        """Delegate rich display to the underlying anywidget widget."""
+        if hasattr(self.widget, "_repr_mimebundle_"):
+            return self.widget._repr_mimebundle_(*args, **kwargs)
+        return None

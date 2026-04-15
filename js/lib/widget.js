@@ -428,10 +428,12 @@ export class CadViewerView extends RuntimeView {
       this.container_id = container.id;
       this.container = container;
 
-      if (this.title == null) {
+      const sidecar = this.title == null ? null : App.getSidecar(this.title);
+
+      if (sidecar == null) {
         App.addCellViewer(container.id, this);
       } else {
-        App.getSidecar(this.title).registerChild(this);
+        sidecar.registerChild(this);
       }
       this.el.appendChild(container);
 
@@ -443,7 +445,7 @@ export class CadViewerView extends RuntimeView {
         this.model.save_changes();
       }
 
-      if (displayOptions.cadWidth < size.width && this.title != null) {
+      if (displayOptions.cadWidth < size.width && sidecar != null) {
         // anchor != right
         this.width =
           Math.round(
@@ -456,7 +458,7 @@ export class CadViewerView extends RuntimeView {
 
       this.display = new Display(container, displayOptions);
 
-      if (this.title != null) {
+      if (sidecar != null) {
         // do not resize cell viewers
         this.observer = new ResizeObserver((entries) => {
           for (const entry of entries) {
@@ -573,9 +575,50 @@ export class CadViewerView extends RuntimeView {
       return;
     }
 
-    this.shapes = { data: this.model.get("shapes") };
+    const modelShapes = this.model.get("shapes");
+    const modelStates = this.model.get("states") || {};
+    if (modelShapes == null) {
+      this.debug("addShapes skipped: shapes payload is null");
+      return false;
+    }
+
+    // Normalize to a single envelope so decode() can always apply `states`.
+    if (
+      modelShapes != null &&
+      typeof modelShapes === "object" &&
+      (modelShapes.shapes != null || modelShapes.instances != null)
+    ) {
+      this.shapes = {
+        data: {
+          ...modelShapes,
+          states:
+            modelShapes.states != null && typeof modelShapes.states === "object"
+              ? modelShapes.states
+              : modelStates
+        }
+      };
+    } else {
+      this.shapes = {
+        data: {
+          shapes: modelShapes,
+          states: modelStates
+        }
+      };
+    }
     decode(this.shapes);
-    this.shapes = this.shapes["data"]["shapes"];
+
+    // Accept both envelopes after decode:
+    // 1) { data: { shapes, instances } }  2) { data: <shape-tree> }
+    const decoded = this.shapes["data"];
+    this.shapes = decoded && decoded["shapes"] ? decoded["shapes"] : decoded;
+
+    if (!this.shapes || !this.shapes["bb"]) {
+      this.debug(
+        "addShapes skipped: decoded payload has no bounding box",
+        this.shapes
+      );
+      return false;
+    }
 
     const bbox = this.shapes["bb"];
     const center = [

@@ -8,5 +8,6 @@ dependencies:
   - numpy=2.4.3
   - pythonocc-core=7.9.3
   - pip:
-      - marimo==0.23.1
-      - -e .
+  - anywidget
+    - marimo==0.23.1
+    - -e .

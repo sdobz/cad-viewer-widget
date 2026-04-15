@@ -274,59 +274,69 @@ Follow these patterns to ensure the migrated codebase works correctly in marimo 
 ### ✅ DO
 
 1. **Use marimo's reactive DAG natively**:
+
    ```python
    # Good: Let marimo track dependencies automatically
    @app.cell
    def __(geojson_path):
        mesh = build_mesh_from_geojson(geojson_path)
        return mesh
-   
+
    @app.cell
    def __(mesh, text_label):
        stl = build_candle(mesh, text_label)
        return stl
    ```
+
    When `text_label` changes, only the second cell re-runs; the mesh is cached.
 
 2. **Use `mo.status.spinner()` for long-running computations**:
+
    ```python
    with mo.status.spinner(title="Building mesh..."):
        mesh = tessellate_terrain(elevation_data, optimization_level)
    ```
+
    Gives users feedback and prevents the "Is it frozen?" perception.
 
 3. **Use `mo.ui.stop_button()` for interruptible tasks** (if marimo supports):
+
    ```python
    stop = mo.ui.stop_button()
    mesh = expensive_build(stop=stop)
    ```
 
 4. **Cache expensive computations explicitly**:
+
    ```python
    @functools.lru_cache(maxsize=16)
    def fetch_terrain(geojson_bounds_tuple):
        """Hash args automatically; only fetch once per unique bounds."""
        return touch_terrain_api(geojson_bounds_tuple)
    ```
+
    Or use `@mo.cache` if marimo provides it.
 
 5. **Return stateless `_repr_html_()` snapshots**:
+
    ```python
    class CadViewer:
        def _repr_html_(self):
            """Serialize current state to HTML; called each time cell re-runs."""
            return html_with_embedded_state(self.shapes, self.camera, self.clipping)
    ```
+
    Every cell re-run generates a fresh HTML snapshot; marimo renders it without side effects.
 
 6. **Separate data transformation from display**:
+
    ```python
    @app.cell
    def __(elevation_grid):
        # Pure computation: no rendering
        processed = process_raster(elevation_grid)
        return processed
-   
+
    @app.cell
    def __(processed):
        # Display only: no heavy lifting
@@ -343,37 +353,43 @@ Follow these patterns to ensure the migrated codebase works correctly in marimo 
    - **Replace with**: Rely on marimo cell re-execution to propagate state
 
 2. **Do NOT assume persistent Python objects across cell re-runs**:
+
    ```python
    # BAD: global state persists but is stale
    global_cache = {}
-   
+
    @app.cell
    def __(input_param):
        if input_param in global_cache:
            return global_cache[input_param]  # Stale!
        ...
    ```
+
    **Replace with**: Use `@functools.lru_cache` or explicit `mo.cache` that respects marimo's invalidation
 
 3. **Do NOT store widget state in JavaScript closure variables**:
+
    ```javascript
    // BAD: Persists across notebook re-runs, stale after parameter change
    let cachedMesh = null;
-   
+
    function initViewer(mesh) {
        if (cachedMesh === mesh) return;  // Won't detect update!
        ...
    }
    ```
+
    **Replace with**: Initialize fresh on every `_repr_html_()` call; let marimo track the state
 
 4. **Do NOT mix framework state models (jQuery event handlers + trait observers + DOM mutations)**:
+
    ```python
    # BAD: Multiple layers fighting for control
    self.on_trait_change(self._on_shape_change)  # Python
    viewer.addEventListener("shapeChange", ...)  # JS
    IPython.display.update_display(...)  # Jupyter hack
    ```
+
    **Replace with**: Single path: Python traitlets → marimo cell invalidation → fresh `_repr_html_()` → JS one-time init
 
 5. **Do NOT assume the viewer keeps state between marimo edits**:
@@ -434,7 +450,7 @@ The migration is complete only when all of the following are true:
 
 ✅ **Completed**: Milestones 1-4 (Python runtime, JS runtime, packaging, notebooks)
 ⏳ **In Progress**: Milestone 5 (marimo rendering integration)
-⏸️  **Pending**: Milestone 6 (docs purge)
+⏸️ **Pending**: Milestone 6 (docs purge)
 
 ## Suggested commit order
 
