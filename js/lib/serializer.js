@@ -84,7 +84,9 @@ function decode(data) {
     instance.obj_vertices = maybeConvertBuffer(instance.obj_vertices);
     instance.face_types = maybeConvertBuffer(instance.face_types);
     instance.edge_types = maybeConvertBuffer(instance.edge_types);
-    instance.triangles_per_face = maybeConvertBuffer(instance.triangles_per_face);
+    instance.triangles_per_face = maybeConvertBuffer(
+      instance.triangles_per_face
+    );
     instance.segments_per_edge = maybeConvertBuffer(instance.segments_per_edge);
     instance.edges = maybeConvertBuffer(instance.edges);
   });
