@@ -2,6 +2,7 @@
 """This module is the Python part of the CAD Viewer widget"""
 
 import base64
+import hashlib
 from html import escape
 import orjson
 from pathlib import Path
@@ -225,6 +226,68 @@ class AnimationTrack:
 
 
 _ANYWIDGET_CLASS = None
+_ANYWIDGET_ESM = None
+_MARIMO_ESM_VFILES = {}
+
+
+def _get_marimo_widget_module_url(esm):
+    """Return a stable module URL for marimo widget rendering."""
+    digest = hashlib.sha256(esm.encode("utf-8")).hexdigest()
+    url = _MARIMO_ESM_VFILES.get(digest)
+    if url is not None:
+        return url
+
+    from marimo._runtime.virtual_file.virtual_file import VirtualFile
+
+    vfile = VirtualFile.create_and_register(esm.encode("utf-8"), "js")
+    _MARIMO_ESM_VFILES[digest] = vfile.url
+    return vfile.url
+
+
+def _repr_marimo_anywidget(widget):
+    """Render the viewer with marimo's anywidget web component directly."""
+    try:
+        from marimo._plugins.core.web_component import build_ui_plugin
+        from marimo._runtime.context import (
+            ContextNotInitializedError,
+            get_context,
+        )
+        from marimo._utils.code import hash_code
+    except Exception:
+        return None
+
+    try:
+        get_context()
+    except ContextNotInitializedError:
+        return None
+
+    esm = getattr(widget, "_esm", None)
+    if not isinstance(esm, str) or not esm:
+        return None
+
+    _ = widget.comm
+    model_id = getattr(widget, "_model_id", None)
+    if not model_id:
+        return None
+
+    js_url = _get_marimo_widget_module_url(esm)
+    inner = build_ui_plugin(
+        component_name="marimo-anywidget",
+        initial_value={},
+        label=None,
+        args={
+            "js-url": js_url,
+            "js-hash": hash_code(esm),
+            "model-id": model_id,
+        },
+    )
+    html = (
+        f"<marimo-ui-element object-id='{model_id}' "
+        f"random-id='{model_id}'>"
+        f"{inner}"
+        f"</marimo-ui-element>"
+    )
+    return {"text/html": html}
 
 
 def _get_widget_class():
@@ -234,19 +297,26 @@ def _get_widget_class():
     formatter registration, so we load it lazily when first constructing
     a viewer instance.
     """
-    global _ANYWIDGET_CLASS
-    if _ANYWIDGET_CLASS is not None:
+    global _ANYWIDGET_CLASS, _ANYWIDGET_ESM
+
+    esm = _load_anywidget_esm()
+    if _ANYWIDGET_CLASS is not None and _ANYWIDGET_ESM == esm:
         return _ANYWIDGET_CLASS
 
     try:
         import anywidget
 
+        css_path = Path(__file__).resolve().parents[1] / "js" / "dist" / "index.css"
+
         class AnyCadViewerWidget(anywidget.AnyWidget, CadViewerWidget):
-            _esm = _load_anywidget_esm()
+            _esm = esm
+            _css = css_path if css_path.exists() else ""
 
         _ANYWIDGET_CLASS = AnyCadViewerWidget
+        _ANYWIDGET_ESM = esm
     except Exception:
         _ANYWIDGET_CLASS = CadViewerWidget
+        _ANYWIDGET_ESM = None
 
     return _ANYWIDGET_CLASS
 
@@ -2144,14 +2214,16 @@ class CadViewer:
             )
         )
 
-    def _repr_html_(self):
-        """Fallback HTML path for hosts that do not support widget mime bundles."""
-        from ._marimo import cadviewer_to_html
-
-        return cadviewer_to_html(self)
-
     def _repr_mimebundle_(self, *args, **kwargs):
-        """Delegate rich display to the underlying anywidget widget."""
+        """Delegate rich display to the underlying anywidget widget.
+
+        We intentionally avoid a `_repr_html_` implementation on `CadViewer`
+        because marimo prefers HTML over mimebundles. Returning only the
+        mimebundle keeps one live anywidget runtime path for display.
+        """
+        marimo_bundle = _repr_marimo_anywidget(self.widget)
+        if marimo_bundle is not None:
+            return marimo_bundle
         if hasattr(self.widget, "_repr_mimebundle_"):
             return self.widget._repr_mimebundle_(*args, **kwargs)
         return None

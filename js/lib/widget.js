@@ -8,6 +8,20 @@ import "../style/index.css";
 
 import App from "./app.js";
 
+const RUNTIME_DEBUG_MARKER = "cvw-runtime-2026-04-16-01";
+
+/**
+ * @typedef {Record<string, unknown>} UnknownRecord
+ */
+
+/**
+ * @typedef {{ changed?: UnknownRecord, changedAttributes?: (() => UnknownRecord | null | undefined) }} ChangeLike
+ */
+
+/**
+ * @typedef {{ key: string | null, value: unknown }} ChangeResolution
+ */
+
 class RuntimeModel {
   constructor(attributes = {}) {
     this.attributes = {};
@@ -186,6 +200,17 @@ export class CadViewerView extends RuntimeView {
     if (!this.model.get("rendered")) {
       super.render();
 
+      window.__cadViewerWidgetDebug = {
+        marker: RUNTIME_DEBUG_MARKER,
+        version: _version,
+        module: _module,
+        renderedAt: new Date().toISOString()
+      };
+      console.info(
+        "cad-viewer-widget runtime marker",
+        window.__cadViewerWidgetDebug
+      );
+
       this.model.on("change:initialize", this.clearOrAddShapes, this);
       this.model.on("change:tracks", this.handle_change, this);
       this.model.on("change:position", this.handle_change, this);
@@ -263,6 +288,7 @@ export class CadViewerView extends RuntimeView {
       this._zoom = null;
       this._camera_distance = null;
       this._clipping = null;
+      this._isRendering = false;
 
       window.getCadViewers = App.getCadViewers;
       window.currentCadViewer = this;
@@ -357,19 +383,35 @@ export class CadViewerView extends RuntimeView {
 
   dispose() {
     if (!this.disposed) {
-      this.viewer.dispose();
-
-      // first set disposed to true to avoid double dispose call
       this.disposed = true;
+
+      if (this.viewer != null) {
+        try {
+          this.viewer.dispose();
+        } catch (error) {
+          // Some teardown paths can run before shapes were attached.
+          this.debug("Ignoring viewer dispose error", error);
+        }
+      }
 
       // then set model widget, to block additional triggered dispose call
       this.model.set("disposed", true);
       this.model.save_changes();
+
+      this.viewer = null;
     }
   }
 
   _barHandler(index, tab) {
     return undefined;
+  }
+
+  _getContainerHostElement() {
+    if (this.container == null) {
+      return null;
+    }
+    const host = this.container.parentElement?.parentElement;
+    return host instanceof Element ? host : null;
   }
 
   resize = (rect) => {
@@ -404,11 +446,11 @@ export class CadViewerView extends RuntimeView {
           height,
           displayOptions.glass
         );
-      }
 
-      this.model.set("cad_width", width);
-      this.model.set("height", height);
-      this.model.save_changes();
+        this.model.set("cad_width", width);
+        this.model.set("height", height);
+        this.model.save_changes();
+      }
     }
   };
 
@@ -427,7 +469,8 @@ export class CadViewerView extends RuntimeView {
       App.addCellViewer(container.id, this);
       this.el.appendChild(container);
 
-      let size = container.parentNode.parentNode.getBoundingClientRect();
+      const host = this._getContainerHostElement() || this.el;
+      const size = host.getBoundingClientRect();
       if (displayOptions.height == null) {
         this.height = Math.round(size.height) - 60;
         displayOptions.height = this.height;
@@ -443,7 +486,7 @@ export class CadViewerView extends RuntimeView {
         }
       });
 
-      this.observer.observe(container.parentNode.parentNode);
+      this.observer.observe(host);
     }
 
     this.display.glassMode(displayOptions.glass);
@@ -462,18 +505,74 @@ export class CadViewerView extends RuntimeView {
   }
 
   handleNotification(change) {
-    Object.keys(change).forEach((key) => {
-      const new_value = change[key]["new"];
-      this.model.set(key, new_value);
-      this.debug(`Setting Python attribute ${key} to`, new_value);
-    });
-    this.model.save_changes();
+    try {
+      if (change == null || typeof change !== "object") {
+        this.debug("Ignoring invalid notification payload", change);
+        return;
+      }
+
+      // Only propagate read-only interaction signals back to Python.
+      // Pushing renderer configuration values back into the model causes
+      // re-entrant update loops during render.
+      const notificationAllowlist = new Set([
+        "lastPick",
+        "activeTool",
+        "selectedShapeIDs",
+        "measure"
+      ]);
+
+      const keys = Object.keys(change);
+      this.debug("handleNotification keys", keys);
+
+      let didUpdate = false;
+
+      keys.forEach((key) => {
+        if (!notificationAllowlist.has(key)) {
+          this.debug("Notification key ignored", key);
+          return;
+        }
+
+        const item = change[key];
+        const new_value =
+          item != null && typeof item === "object" && "new" in item
+            ? item.new
+            : undefined;
+
+        if (new_value === undefined) {
+          this.debug("Notification missing .new value", key, item);
+          return;
+        }
+
+        const currentValue = this.model.get(key);
+        if (isTolEqual(currentValue, new_value)) {
+          return;
+        }
+
+        this.model.set(key, new_value);
+        didUpdate = true;
+        this.debug(`Setting Python attribute ${key} to`, new_value);
+      });
+
+      if (didUpdate) {
+        this.model.save_changes();
+      }
+    } catch (error) {
+      this.debug("handleNotification error", change, error);
+    }
   }
 
   clear() {
+    if (this.viewer == null) {
+      return;
+    }
+
     this.viewer.hasAnimationLoop = false;
     this.viewer.continueAnimation = false;
-    this.viewer.dispose();
+    try {
+      this.viewer.dispose();
+    } catch (error) {
+      this.debug("Ignoring viewer clear error", error);
+    }
     this.viewer = null;
   }
 
@@ -491,10 +590,9 @@ export class CadViewerView extends RuntimeView {
       this.showViewer();
     } else {
       this.addShapes();
-      if (this.container != null) {
-        this.resize(
-          this.container.parentNode.parentNode.getBoundingClientRect()
-        );
+      const host = this._getContainerHostElement();
+      if (host != null) {
+        this.resize(host.getBoundingClientRect());
       }
     }
   }
@@ -649,8 +747,10 @@ export class CadViewerView extends RuntimeView {
       }
       this._camera_distance = null;
     } else {
+      let nextPosition = null;
+
       if (this.model.get("position")) {
-        viewerOptions.position = this.model.get("position");
+        nextPosition = this.model.get("position");
       } else if (this._position) {
         if (resetCamera === "keep") {
           const camera_distance = 5 * bb_radius;
@@ -664,6 +764,7 @@ export class CadViewerView extends RuntimeView {
           for (var i = 0; i < 3; i++) {
             p[i] = p[i] * camera_distance + offset[i];
           }
+          nextPosition = p;
         } else {
           // center
           var p = [0, 0, 0];
@@ -671,10 +772,13 @@ export class CadViewerView extends RuntimeView {
             p[i] = this._position[i] - this._target[i] + center[i];
           }
           this._target = center;
+          nextPosition = p;
         }
       }
-      viewerOptions.position = p;
-      this._position = viewerOptions.position;
+      if (nextPosition != null) {
+        viewerOptions.position = nextPosition;
+        this._position = viewerOptions.position;
+      }
 
       if (this.model.get("quaternion")) {
         viewerOptions.quaternion = this.model.get("quaternion");
@@ -694,65 +798,70 @@ export class CadViewerView extends RuntimeView {
         viewerOptions.zoom = this._zoom;
       }
     }
-    this.viewer.render(this.shapes, this.getRenderOptions(), viewerOptions);
+    this._isRendering = true;
+    try {
+      this.viewer.render(this.shapes, this.getRenderOptions(), viewerOptions);
 
-    if (resetCamera === "keep" && this.camera_distance != null) {
-      // console.log("camera_distance", this.camera_distance, viewer.camera.camera_distance, viewer.camera.camera_distance/this.camera_distance);
-      viewer.setCameraZoom(
-        ((this.zoom == null ? 1.0 : this.zoom) *
-          viewer.camera.camera_distance) /
-          this.camera_distance
-      );
+      if (resetCamera === "keep" && this._camera_distance != null) {
+        // console.log("camera_distance", this.camera_distance, viewer.camera.camera_distance, viewer.camera.camera_distance/this.camera_distance);
+        this.viewer.setCameraZoom(
+          ((this._zoom == null ? 1.0 : this._zoom) *
+            this.viewer.camera.camera_distance) /
+            this._camera_distance
+        );
+      }
+
+      this._position = this.viewer.getCameraPosition();
+      this._quaternion = this.viewer.getCameraQuaternion();
+      this._target = this.viewer.controls.getTarget().toArray();
+      this._zoom = this.viewer.getCameraZoom();
+      this._camera_distance = this.viewer.camera.camera_distance;
+
+      this.clipping = {
+        sliders: [
+          this.viewer.getClipSlider(0),
+          this.viewer.getClipSlider(1),
+          this.viewer.getClipSlider(2)
+        ],
+        normals: [
+          this.viewer.getClipNormal(0),
+          this.viewer.getClipNormal(1),
+          this.viewer.getClipNormal(2)
+        ],
+        planeHelpers: this.viewer.getClipPlaneHelpers(),
+        objectColors: this.viewer.getObjectColorCaps(),
+        intersection: this.viewer.getClipIntersection()
+      };
+
+      timer.split("renderer");
+
+      this.model.set("position", this._position);
+      this.model.set("quaternion", this._quaternion);
+      this.model.set("target", this._target);
+      this.model.set("zoom", this._zoom);
+
+      this.model.save_changes();
+
+      this.setClipping();
+
+      // add animation tracks if exist
+      const tracks = this.model.get("tracks");
+      if (tracks != "" && tracks != null) {
+        this.addTracks(tracks);
+        this.animate();
+      }
+
+      if (this.model.get("explode") != null) {
+        let flag = this.model.get("explode");
+        this.viewer.display.setExplode("", !flag); // workaround
+        this.viewer.display.setExplode("", flag);
+        this.viewer.display.setExplodeCheck(flag);
+      }
+
+      timer.stop();
+    } finally {
+      this._isRendering = false;
     }
-
-    this._position = viewer.getCameraPosition();
-    this._quaternion = viewer.getCameraQuaternion();
-    this._target = viewer.controls.getTarget().toArray();
-    this._zoom = viewer.getCameraZoom();
-    this._camera_distance = viewer.camera.camera_distance;
-
-    this.clipping = {
-      sliders: [
-        viewer.getClipSlider(0),
-        viewer.getClipSlider(1),
-        viewer.getClipSlider(2)
-      ],
-      normals: [
-        viewer.getClipNormal(0),
-        viewer.getClipNormal(1),
-        viewer.getClipNormal(2)
-      ],
-      planeHelpers: viewer.getClipPlaneHelpers(),
-      objectColors: viewer.getObjectColorCaps(),
-      intersection: viewer.getClipIntersection()
-    };
-
-    timer.split("renderer");
-
-    this.model.set("position", this._position);
-    this.model.set("quaternion", this._quaternion);
-    this.model.set("target", this._target);
-    this.model.set("zoom", this._zoom);
-
-    this.model.save_changes();
-
-    this.setClipping();
-
-    // add animation tracks if exist
-    const tracks = this.model.get("tracks");
-    if (tracks != "" && tracks != null) {
-      this.addTracks(tracks);
-      this.animate();
-    }
-
-    if (this.model.get("explode") != null) {
-      let flag = this.model.get("explode");
-      this.viewer.display.setExplode("", !flag); // workaround
-      this.viewer.display.setExplode("", flag);
-      this.viewer.display.setExplodeCheck(flag);
-    }
-
-    timer.stop();
 
     return true;
   }
@@ -796,220 +905,364 @@ export class CadViewerView extends RuntimeView {
     this.tracks = [];
   }
 
-  handle_change(change) {
-    const setKey = (getter, setter, key, arg = null, arg2 = null) => {
-      if (this.viewer == null) return;
+  /**
+   * Normalize a model change event to a single key/value pair.
+   *
+   * anywidget/backbone callbacks can emit either:
+   * - a model-like object with `changed` and `changedAttributes()`
+   * - positional callback args `(model, value)`
+   *
+   * @param {ChangeLike | UnknownRecord | null | undefined} change
+   * @param {unknown} valueFromCallback
+   * @returns {ChangeResolution}
+   */
+  _resolveChange(change, valueFromCallback) {
+    let key = null;
+    let value = valueFromCallback;
 
-      const value = change.changed[key];
-      const oldValue =
-        arg == null ? this.viewer[getter]() : this.viewer[getter](arg);
-      if (!isTolEqual(oldValue, value)) {
-        this.debug(`Setting Javascript attribute ${key} to`, value);
-        if (arg == null && arg2 == null) {
-          this.viewer[setter](value, true);
-        } else if (arg != null && arg2 != null) {
-          this.viewer[setter](arg, value, arg2, true);
-        } else if (arg != null) {
-          this.viewer[setter](arg, value, true);
-        } else if (arg2 != null) {
-          this.viewer[setter](value, arg2, true);
-        }
+    const asObject = (candidate) =>
+      candidate && typeof candidate === "object" ? candidate : null;
+    const safeKeys = (candidate) => {
+      const obj = asObject(candidate);
+      if (obj == null) {
+        return [];
+      }
+      try {
+        return Object.keys(obj);
+      } catch (error) {
+        this.debug("Ignoring invalid change payload", candidate, error);
+        return [];
       }
     };
 
-    const key = Object.keys(change.changed)[0];
-
-    if (this.init) {
-      this.debug("Ignore message");
-      return;
+    const primaryChanged = asObject(change && change.changed);
+    const primaryKeys = safeKeys(primaryChanged);
+    if (primaryKeys.length > 0) {
+      if (valueFromCallback !== undefined) {
+        const matches = primaryKeys.filter((k) =>
+          Object.is(primaryChanged[k], valueFromCallback)
+        );
+        if (matches.length === 1) {
+          key = matches[0];
+          value = valueFromCallback;
+        } else {
+          key = primaryKeys[0];
+          value = primaryChanged[key];
+        }
+      } else {
+        key = primaryKeys[0];
+        value = primaryChanged[key];
+      }
     }
 
-    var tracks = "";
-    var value = null;
-    var flag = null;
-    this.debug("handle_change:", key, change.changed[key]);
-    switch (key) {
-      case "zoom":
-        setKey("getCameraZoom", "setCameraZoom", key);
-        this._zoom = this.viewer.getCameraZoom();
-        break;
-      case "position":
-        setKey("getCameraPosition", "setCameraPosition", key, null, false);
-        this._position = this.viewer.getCameraPosition();
-        break;
-      case "quaternion":
-        setKey("getCameraQuaternion", "setCameraQuaternion", key);
-        this._quaternion = this.viewer.getCameraQuaternion();
-        break;
-      case "target":
-        setKey("getCameraTarget", "setCameraTarget", key);
-        this._target = this.viewer.getCameraTarget();
-        break;
-      case "axes":
-        setKey("getAxes", "setAxes", key);
-        break;
-      case "grid":
-        setKey("getGrids", "setGrids", key);
-        break;
-      case "center_grid":
-        this.viewer.setGridCenter(change.changed[key]);
-        break;
-      case "axes0":
-        setKey("getAxes0", "setAxes0", key);
-        break;
-      case "ortho":
-        setKey("getOrtho", "switchCamera", key);
-        break;
-      case "transparent":
-        setKey("getTransparent", "setTransparent", key);
-        break;
-      case "black_edges":
-        setKey("getBlackEdges", "setBlackEdges", key);
-        break;
-      case "explode":
-        if (this.model.get("explode") != null) {
-          let flag = change.changed[key];
-          this.viewer.display.setExplode("", flag);
-          this.viewer.display.setExplodeCheck(!flag); // workaround
-          this.viewer.display.setExplodeCheck(flag);
-        }
-        break;
-      case "collapse":
-        var val = change.changed[key];
-        if (["1", "R", "E", "C"].includes(val)) {
-          this.viewer.display.collapseNodes(val);
-        }
-        break;
-      case "tools":
-        setKey("getTools", "showTools", key);
-        break;
-      case "glass":
-        flag = change.changed[key];
-        this.viewer.display.glassMode(flag);
-        break;
-      case "cad_width":
-        value = change.changed[key];
-        this.viewer.resizeCadView(
-          value,
-          this.model.get("tree_width"),
-          this.model.get("height"),
-          this.model.get("glass")
-        );
-        break;
-      case "tree_width":
-        value = change.changed[key];
-        this.viewer.resizeCadView(
-          this.model.get("cad_width"),
-          value,
-          this.model.get("height"),
-          this.model.get("glass")
-        );
-        break;
-      case "height":
-        value = change.changed[key];
-        this.viewer.resizeCadView(
-          this.model.get("cad_width"),
-          this.model.get("tree_width"),
-          value,
-          this.model.get("glass")
-        );
-        break;
-      case "pinning":
-        flag = change.changed[key];
-        this.viewer.display.showPinning(flag);
-        break;
-      case "default_edgecolor":
-        setKey("getEdgeColor", "setEdgeColor", key);
-        break;
-      case "default_opacity":
-        setKey("getOpacity", "setOpacity", key);
-        break;
-      case "ambient_intensity":
-        setKey("getAmbientLight", "setAmbientLight", key, null, true);
-        break;
-      case "direct_intensity":
-        setKey("getDirectLight", "setDirectLight", key, null, true);
-        break;
-      case "metalness":
-        setKey("getMetalness", "setMetalness", key, null, true);
-        break;
-      case "roughness":
-        setKey("getRoughness", "setRoughness", key, null, true);
-        break;
-      case "zoom_speed":
-        setKey("getZoomSpeed", "setZoomSpeed", key);
-        break;
-      case "pan_speed":
-        setKey("getPanSpeed", "setPanSpeed", key);
-        break;
-      case "rotate_speed":
-        setKey("getRotateSpeed", "setRotateSpeed", key);
-        break;
-      case "tracks":
-        tracks = this.model.get("tracks");
-        if (tracks == "") {
-          this.clearAnimation();
-        } else {
-          this.addTracks(tracks);
-        }
-        break;
-      case "state_updates":
-        var states = change.changed[key];
-        for (var k in states) {
-          // supports leaves only. TODO: extend to full sub trees
-          this.viewer.setState(k, states[k], false);
-        }
-        break;
-      case "tab":
-        value = change.changed[key];
-        if (this.activeTab !== value) {
-          this.activeTab = value;
-          if (value === "tree" || value == "clip" || value == "material") {
-            this.viewer.display.selectTabByName(value);
+    if (!key && change && typeof change === "object") {
+      const changed =
+        typeof change.changedAttributes === "function"
+          ? change.changedAttributes()
+          : change.changed;
+      const changedObj = asObject(changed);
+      const changedKeys = safeKeys(changedObj);
+      if (changedKeys.length > 0) {
+        if (valueFromCallback !== undefined) {
+          const matches = changedKeys.filter((k) =>
+            Object.is(changedObj[k], valueFromCallback)
+          );
+          if (matches.length === 1) {
+            key = matches[0];
+            value = valueFromCallback;
           } else {
-            console.error(`cad-viewer-widget: unkonwn tab name ${value}`);
+            key = changedKeys[0];
+            if (value === undefined) {
+              value = changedObj[key];
+            }
+          }
+        } else {
+          key = changedKeys[0];
+          if (value === undefined) {
+            value = changedObj[key];
           }
         }
-        break;
-      case "clip_intersection":
-        setKey("getClipIntersection", "setClipIntersection", key);
-        break;
-      case "clip_planes":
-        setKey("getClipPlaneHelpers", "setClipPlaneHelpers", key);
-        break;
-      case "clip_normal_0":
-        const slider_0 = this.viewer.getClipSlider(0);
-        setKey("getClipNormal", "setClipNormal", key, 0, slider_0);
-        break;
-      case "clip_normal_1":
-        const slider_1 = this.viewer.getClipSlider(1);
-        setKey("getClipNormal", "setClipNormal", key, 1, slider_1);
-        break;
-      case "clip_normal_2":
-        const slider_2 = this.viewer.getClipSlider(2);
-        setKey("getClipNormal", "setClipNormal", key, 2, slider_2);
-        break;
-      case "clip_slider_0":
-        setKey("getClipSlider", "setClipSlider", key, 0);
-        break;
-      case "clip_slider_1":
-        setKey("getClipSlider", "setClipSlider", key, 1);
-        break;
-      case "clip_slider_2":
-        setKey("getClipSlider", "setClipSlider", key, 2);
-        break;
-      case "clip_object_colors":
-        this.viewer.setClipObjectColorCaps(change.changed[key]);
-        break;
-      case "debug":
-        this._debug = change.changed[key];
-        break;
-      case "disposed":
-        this.dispose();
-        break;
-      case "measure":
-        this.viewer.handleBackendResponse(change.changed[key]);
-        break;
+      }
+    }
+
+    return { key, value };
+  }
+
+  /**
+   * Handle anywidget/backbone model change notifications.
+   *
+   * @param {ChangeLike | UnknownRecord | null | undefined} change
+   * @param {unknown} valueFromCallback
+   */
+  handle_change(change, valueFromCallback) {
+    try {
+      if (this._isRendering) {
+        this.debug(
+          "Ignore message during viewer render",
+          change,
+          valueFromCallback
+        );
+        return;
+      }
+
+      this.debug("handle_change payload", {
+        changeType: typeof change,
+        hasChanged: !!(change && change.changed),
+        hasChangedAttributes: !!(
+          change && typeof change.changedAttributes === "function"
+        ),
+        valueFromCallbackType: typeof valueFromCallback
+      });
+
+      const resolved = this._resolveChange(change, valueFromCallback);
+      const key = resolved.key;
+      const value = resolved.value;
+
+      if (!key) {
+        this.debug("handle_change skipped: unknown event payload", change);
+        return;
+      }
+
+      /**
+       * @param {string} getter
+       * @param {string} setter
+       * @param {unknown} nextValue
+       * @param {unknown} [arg]
+       * @param {unknown} [arg2]
+       */
+      const setKey = (getter, setter, nextValue, arg, arg2) => {
+        if (this.viewer == null) return;
+
+        const oldValue =
+          arg === undefined ? this.viewer[getter]() : this.viewer[getter](arg);
+        if (!isTolEqual(oldValue, nextValue)) {
+          this.debug(`Setting Javascript attribute ${key} to`, nextValue);
+          if (arg === undefined && arg2 === undefined) {
+            this.viewer[setter](nextValue, true);
+          } else if (arg !== undefined && arg2 !== undefined) {
+            this.viewer[setter](arg, nextValue, arg2, true);
+          } else if (arg !== undefined) {
+            this.viewer[setter](arg, nextValue, true);
+          } else if (arg2 !== undefined) {
+            this.viewer[setter](nextValue, arg2, true);
+          }
+        }
+      };
+
+      if (this.init) {
+        this.debug("Ignore message");
+        return;
+      }
+
+      var tracks = "";
+      var flag = null;
+      this.debug("handle_change:", key, value);
+      try {
+        switch (key) {
+          case "zoom":
+            setKey("getCameraZoom", "setCameraZoom", value);
+            this._zoom = this.viewer.getCameraZoom();
+            break;
+          case "position":
+            setKey(
+              "getCameraPosition",
+              "setCameraPosition",
+              value,
+              undefined,
+              false
+            );
+            this._position = this.viewer.getCameraPosition();
+            break;
+          case "quaternion":
+            setKey("getCameraQuaternion", "setCameraQuaternion", value);
+            this._quaternion = this.viewer.getCameraQuaternion();
+            break;
+          case "target":
+            setKey("getCameraTarget", "setCameraTarget", value);
+            this._target = this.viewer.getCameraTarget();
+            break;
+          case "axes":
+            setKey("getAxes", "setAxes", value);
+            break;
+          case "grid":
+            setKey("getGrids", "setGrids", value);
+            break;
+          case "center_grid":
+            this.viewer.setGridCenter(value);
+            break;
+          case "axes0":
+            setKey("getAxes0", "setAxes0", value);
+            break;
+          case "ortho":
+            setKey("getOrtho", "switchCamera", value);
+            break;
+          case "transparent":
+            setKey("getTransparent", "setTransparent", value);
+            break;
+          case "black_edges":
+            setKey("getBlackEdges", "setBlackEdges", value);
+            break;
+          case "explode":
+            if (this.model.get("explode") != null) {
+              let flag = value;
+              this.viewer.display.setExplode("", flag);
+              this.viewer.display.setExplodeCheck(!flag); // workaround
+              this.viewer.display.setExplodeCheck(flag);
+            }
+            break;
+          case "collapse":
+            var val = value;
+            if (typeof val === "string" && ["1", "R", "E", "C"].includes(val)) {
+              this.viewer.display.collapseNodes(val);
+            }
+            break;
+          case "tools":
+            setKey("getTools", "showTools", value);
+            break;
+          case "glass":
+            flag = value;
+            this.viewer.display.glassMode(flag);
+            break;
+          case "cad_width":
+            this.viewer.resizeCadView(
+              value,
+              this.model.get("tree_width"),
+              this.model.get("height"),
+              this.model.get("glass")
+            );
+            break;
+          case "tree_width":
+            this.viewer.resizeCadView(
+              this.model.get("cad_width"),
+              value,
+              this.model.get("height"),
+              this.model.get("glass")
+            );
+            break;
+          case "height":
+            this.viewer.resizeCadView(
+              this.model.get("cad_width"),
+              this.model.get("tree_width"),
+              value,
+              this.model.get("glass")
+            );
+            break;
+          case "pinning":
+            flag = value;
+            this.viewer.display.showPinning(flag);
+            break;
+          case "default_edgecolor":
+            setKey("getEdgeColor", "setEdgeColor", value);
+            break;
+          case "default_opacity":
+            setKey("getOpacity", "setOpacity", value);
+            break;
+          case "ambient_intensity":
+            setKey(
+              "getAmbientLight",
+              "setAmbientLight",
+              value,
+              undefined,
+              true
+            );
+            break;
+          case "direct_intensity":
+            setKey("getDirectLight", "setDirectLight", value, undefined, true);
+            break;
+          case "metalness":
+            setKey("getMetalness", "setMetalness", value, undefined, true);
+            break;
+          case "roughness":
+            setKey("getRoughness", "setRoughness", value, undefined, true);
+            break;
+          case "zoom_speed":
+            setKey("getZoomSpeed", "setZoomSpeed", value);
+            break;
+          case "pan_speed":
+            setKey("getPanSpeed", "setPanSpeed", value);
+            break;
+          case "rotate_speed":
+            setKey("getRotateSpeed", "setRotateSpeed", value);
+            break;
+          case "tracks":
+            tracks = this.model.get("tracks");
+            if (tracks == "") {
+              this.clearAnimation();
+            } else {
+              this.addTracks(tracks);
+            }
+            break;
+          case "state_updates":
+            var states = value;
+            if (!states || typeof states !== "object") {
+              this.debug("Ignoring invalid state_updates payload", states);
+              break;
+            }
+            for (var k in states) {
+              // supports leaves only. TODO: extend to full sub trees
+              this.viewer.setState(k, states[k], false);
+            }
+            break;
+          case "tab":
+            if (this.activeTab !== value) {
+              this.activeTab = value;
+              if (value === "tree" || value == "clip" || value == "material") {
+                this.viewer.display.selectTabByName(value);
+              } else {
+                console.error(`cad-viewer-widget: unkonwn tab name ${value}`);
+              }
+            }
+            break;
+          case "clip_intersection":
+            setKey("getClipIntersection", "setClipIntersection", value);
+            break;
+          case "clip_planes":
+            setKey("getClipPlaneHelpers", "setClipPlaneHelpers", value);
+            break;
+          case "clip_normal_0":
+            const slider_0 = this.viewer.getClipSlider(0);
+            setKey("getClipNormal", "setClipNormal", value, 0, slider_0);
+            break;
+          case "clip_normal_1":
+            const slider_1 = this.viewer.getClipSlider(1);
+            setKey("getClipNormal", "setClipNormal", value, 1, slider_1);
+            break;
+          case "clip_normal_2":
+            const slider_2 = this.viewer.getClipSlider(2);
+            setKey("getClipNormal", "setClipNormal", value, 2, slider_2);
+            break;
+          case "clip_slider_0":
+            setKey("getClipSlider", "setClipSlider", value, 0);
+            break;
+          case "clip_slider_1":
+            setKey("getClipSlider", "setClipSlider", value, 1);
+            break;
+          case "clip_slider_2":
+            setKey("getClipSlider", "setClipSlider", value, 2);
+            break;
+          case "clip_object_colors":
+            this.viewer.setClipObjectColorCaps(value);
+            break;
+          case "debug":
+            this._debug = value;
+            break;
+          case "disposed":
+            this.dispose();
+            break;
+          case "measure":
+            this.viewer.handleBackendResponse(value);
+            break;
+        }
+      } catch (error) {
+        this.debug("Ignoring handle_change error", key, value, error);
+      }
+    } catch (error) {
+      this.debug(
+        "Ignoring handle_change pre-processing error",
+        change,
+        valueFromCallback,
+        error
+      );
     }
   }
 
@@ -1019,9 +1272,7 @@ export class CadViewerView extends RuntimeView {
         "result",
         JSON.stringify({
           display_id: this.model.get("image_id"),
-          src: image.src,
-          width: image.width,
-          height: image.height
+          src: dataUrl
         })
       );
       this.model.save_changes();

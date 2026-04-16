@@ -162,10 +162,12 @@ def _(cv_1):
 
 
 @app.cell
-def _(cv2, cv_1):
-    cv_1.close()
-    cv2.close()
-    return
+def _(mo, cv_1, cv2):
+    close_initial_viewers = mo.ui.button(
+        label='Close initial viewers',
+        on_click=lambda _: (cv_1.close(), cv2.close()),
+    )
+    close_initial_viewers
 
 
 @app.cell(hide_code=True)
@@ -196,15 +198,21 @@ def _(mo):
 
 
 @app.cell
-def _(cv_2):
-    cv_2.export_png('boxes2.png')
-    return
+def _(mo, cv_2):
+    export_png = mo.ui.button(
+        label='Export PNG',
+        on_click=lambda _: cv_2.export_png('boxes2.png'),
+    )
+    export_png
 
 
 @app.cell
-def _(cv_2):
-    cv_2.export_html()
-    return
+def _(mo, cv_2):
+    export_html = mo.ui.button(
+        label='Export HTML',
+        on_click=lambda _: cv_2.export_html(),
+    )
+    export_html
 
 
 @app.cell(hide_code=True)
@@ -216,9 +224,12 @@ def _(mo):
 
 
 @app.cell
-def _(cv_2):
-    cv_2.pin_as_png()  # same as pressing the pin top right button
-    return
+def _(mo, cv_2):
+    pin_as_png = mo.ui.button(
+        label='Pin as PNG',
+        on_click=lambda _: cv_2.pin_as_png(),
+    )
+    pin_as_png
 
 
 @app.cell(hide_code=True)
@@ -268,9 +279,12 @@ def _(objects, show):
 
 
 @app.cell
-def _(cv1):
-    cv1.close()
-    return
+def _(mo, cv1):
+    close_open_viewer = mo.ui.button(
+        label='Close open_viewer demo',
+        on_click=lambda _: cv1.close(),
+    )
+    close_open_viewer
 
 
 @app.cell(hide_code=True)
@@ -296,9 +310,12 @@ def _(cv2_1):
 
 
 @app.cell
-def _(cv2_1):
-    cv2_1.close()
-    return
+def _(mo, cv2_1):
+    close_show_viewer = mo.ui.button(
+        label='Close show() demo',
+        on_click=lambda _: cv2_1.close(),
+    )
+    close_show_viewer
 
 
 @app.cell
@@ -317,39 +334,46 @@ def _(objects, show):
 
 
 @app.cell
-def _(AnimationTrack, cv_3, np):
-    _horizontal_angle = 25
+def _(mo, AnimationTrack, cv_3, np):
+    def _do_animate(_):
+        _horizontal_angle = 25
 
-    def _intervals(count):
-        r = [min(180, (90 + _i * (360 // count)) % 360) for _i in range(count)]
-        return r
+        def _intervals(count):
+            r = [min(180, (90 + _i * (360 // count)) % 360) for _i in range(count)]
+            return r
 
-    def _times(end, count):
-        return np.linspace(0, end, count + 1)
+        def _times(end, count):
+            return np.linspace(0, end, count + 1)
 
-    def vertical(count, end, offset, reverse):
-        ints = _intervals(count)
-        heights = [round(35 * np.sin(np.deg2rad(x)) - 15, 1) for x in ints]
-        heights.append(heights[0])
-        return (_times(end, count), heights[offset:] + heights[1:offset + 1])
+        def vertical(count, end, offset, reverse):
+            ints = _intervals(count)
+            heights = [round(35 * np.sin(np.deg2rad(x)) - 15, 1) for x in ints]
+            heights.append(heights[0])
+            return (_times(end, count), heights[offset:] + heights[1:offset + 1])
 
-    def horizontal(end, reverse):
-        factor = 1 if reverse else -1
-        return (_times(end, 4), [0, factor * _horizontal_angle, 0, -factor * _horizontal_angle, 0])
-    leg_group = ('left_front', 'right_middle', 'left_back')
-    leg_names = ['right_back', 'right_middle', 'right_front', 'left_back', 'left_middle', 'left_front']
-    for _name in leg_names:
-        cv_3.add_track(AnimationTrack(f'/hexapod/{_name}_leg', 'rz', *horizontal(4, 'middle' in _name)))
-        cv_3.add_track(AnimationTrack(f'/hexapod/{_name}_leg/{_name}_lower_leg', 'rz', *vertical(8, 4, 0 if _name in leg_group else 4, 'left' in _name)))
-    cv_3.animate(3)
-    return
+        def horizontal(end, reverse):
+            factor = 1 if reverse else -1
+            return (_times(end, 4), [0, factor * _horizontal_angle, 0, -factor * _horizontal_angle, 0])
+
+        _leg_group = ('left_front', 'right_middle', 'left_back')
+        _leg_names = ['right_back', 'right_middle', 'right_front', 'left_back', 'left_middle', 'left_front']
+        cv_3.clear_tracks()
+        for _name in _leg_names:
+            cv_3.add_track(AnimationTrack(f'/hexapod/{_name}_leg', 'rz', *horizontal(4, 'middle' in _name)))
+            cv_3.add_track(AnimationTrack(f'/hexapod/{_name}_leg/{_name}_lower_leg', 'rz', *vertical(8, 4, 0 if _name in _leg_group else 4, 'left' in _name)))
+        cv_3.animate(3)
+
+    animate_hexapod = mo.ui.button(label='Animate hexapod gait', on_click=_do_animate)
+    animate_hexapod
 
 
 @app.cell
-def _(cv_3):
-    cv_3.close()
-    cv_3.disposed
-    return
+def _(mo, cv_3):
+    close_animation_demo = mo.ui.button(
+        label='Close animation demo',
+        on_click=lambda _: cv_3.close(),
+    )
+    close_animation_demo
 
 
 @app.cell(hide_code=True)
@@ -399,10 +423,12 @@ def _(cv2_2):
 
 
 @app.cell
-def _(cv2_2, cv_4):
-    cv_4.close()
-    cv2_2.close()
-    return
+def _(mo, cv_4, cv2_2):
+    close_additional_viewers = mo.ui.button(
+        label='Close additional viewers',
+        on_click=lambda _: (cv_4.close(), cv2_2.close()),
+    )
+    close_additional_viewers
 
 
 @app.cell(hide_code=True)
@@ -544,11 +570,12 @@ def _(cv_6):
 
 
 @app.cell
-def _(cv1_1, cv_5, cv_6):
-    cv1_1.close()
-    cv_5.close()
-    cv_6.close()
-    return
+def _(mo, cv1_1, cv_5, cv_6):
+    close_camera_demos = mo.ui.button(
+        label='Close camera demos',
+        on_click=lambda _: (cv1_1.close(), cv_5.close(), cv_6.close()),
+    )
+    close_camera_demos
 
 
 @app.cell(hide_code=True)
@@ -599,9 +626,12 @@ def _(cv_7):
 
 
 @app.cell
-def _(cv_7):
-    cv_7.close()
-    return
+def _(mo, cv_7):
+    close_property_viewer = mo.ui.button(
+        label='Close property viewer',
+        on_click=lambda _: cv_7.close(),
+    )
+    close_property_viewer
 
 
 @app.cell(hide_code=True)
@@ -891,11 +921,12 @@ def _(cv_10, time):
 
 
 @app.cell
-def _(cv_10, cv_8, cv_9):
-    cv_8.close()
-    cv_9.close()
-    cv_10.close()
-    return
+def _(mo, cv_8, cv_9, cv_10):
+    close_rotation_viewers = mo.ui.button(
+        label='Close rotation viewers',
+        on_click=lambda _: (cv_8.close(), cv_9.close(), cv_10.close()),
+    )
+    close_rotation_viewers
 
 
 @app.cell(hide_code=True)
@@ -940,40 +971,55 @@ def _(np):
 
 
 @app.cell
-def _(AnimationTrack, cv_11, horizontal_1, leg_names_1):
-    tracks = []
-    for _name in leg_names_1:
-        cv_11.add_track(AnimationTrack(f'/hexapod/{_name}_leg', 'rz', *horizontal_1(4, 'middle' in _name)))
-    cv_11.animate(3)
-    cv_11.play()
-    return
+def _(mo, AnimationTrack, cv_11, horizontal_1, leg_names_1):
+    def _do_play(_):
+        cv_11.clear_tracks()
+        for _name in leg_names_1:
+            cv_11.add_track(AnimationTrack(f'/hexapod/{_name}_leg', 'rz', *horizontal_1(4, 'middle' in _name)))
+        cv_11.animate(3)
+        cv_11.play()
+
+    play_upper_leg_animation = mo.ui.button(label='Play upper-leg animation', on_click=_do_play)
+    play_upper_leg_animation
 
 
 @app.cell
-def _(cv_11):
-    cv_11.stop()
-    return
+def _(mo, cv_11):
+    stop_animation = mo.ui.button(
+        label='Stop animation',
+        on_click=lambda _: cv_11.stop(),
+    )
+    stop_animation
 
 
 @app.cell
-def _(AnimationTrack, cv_11, leg_group_1, leg_names_1, vertical_1):
-    for _name in leg_names_1:
-        cv_11.add_track(AnimationTrack(f'/hexapod/{_name}_leg/{_name}_lower_leg', 'rz', *vertical_1(8, 4, 0 if _name in leg_group_1 else 4, 'left' in _name)))
-    cv_11.animate(2)
-    cv_11.play()
-    return
+def _(mo, AnimationTrack, cv_11, leg_group_1, leg_names_1, vertical_1):
+    def _do_play_full(_):
+        for _name in leg_names_1:
+            cv_11.add_track(AnimationTrack(f'/hexapod/{_name}_leg/{_name}_lower_leg', 'rz', *vertical_1(8, 4, 0 if _name in leg_group_1 else 4, 'left' in _name)))
+        cv_11.animate(2)
+        cv_11.play()
+
+    play_full_leg_animation = mo.ui.button(label='Play full-leg animation', on_click=_do_play_full)
+    play_full_leg_animation
 
 
 @app.cell
-def _(cv_11):
-    cv_11.clear_tracks()
-    return
+def _(mo, cv_11):
+    clear_tracks = mo.ui.button(
+        label='Clear animation tracks',
+        on_click=lambda _: cv_11.clear_tracks(),
+    )
+    clear_tracks
 
 
 @app.cell
-def _(cv_11):
-    cv_11.close()
-    return
+def _(mo, cv_11):
+    close_animation_viewer = mo.ui.button(
+        label='Close animation viewer',
+        on_click=lambda _: cv_11.close(),
+    )
+    close_animation_viewer
 
 
 if __name__ == "__main__":

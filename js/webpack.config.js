@@ -1,11 +1,12 @@
 const TerserPlugin = require("terser-webpack-plugin");
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 var path = require("path");
 
 // Custom webpack rules are generally the same for all webpack bundles, hence
 // stored in a separate local variable.
 var rules = [
-  { test: /\.css$/, use: ["style-loader", "css-loader"] },
+  { test: /\.css$/, use: [MiniCssExtractPlugin.loader, "css-loader"] },
   { test: /\.svg$/, use: ["svg-inline-loader"] }
 ];
 
@@ -36,6 +37,7 @@ module.exports = {
       })
     ]
   },
+  plugins: [new MiniCssExtractPlugin({ filename: "index.css" })],
   module: {
     rules: rules
   }
