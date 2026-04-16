@@ -7,9 +7,9 @@ from .utils import display_args, viewer_args
 
 
 def _normalize_cad_width(cad_width):
-    if cad_width is not None and cad_width < 780:
-        cad_width = 780
-        print("`cad_width` cannot be smaller than 780, setting to 780")
+    if cad_width is not None and cad_width < 320:
+        cad_width = 320
+        print("`cad_width` cannot be smaller than 320, setting to 320")
     return cad_width
 
 

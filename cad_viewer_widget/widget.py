@@ -594,10 +594,10 @@ class CadViewer:
         new_tree_behavior=True,
         id_=None,
     ):
-        if cad_width < 780:
-            raise ValueError("Ensure cad_width >= 780")
-        if tree_width < 240:
-            raise ValueError("Ensure tree_width >= 240")
+        if cad_width < 320:
+            raise ValueError("Ensure cad_width >= 320")
+        if tree_width < 180:
+            raise ValueError("Ensure tree_width >= 180")
 
         widget_cls = _get_widget_class()
         self.widget = widget_cls(
@@ -942,16 +942,14 @@ class CadViewer:
                 states = {}
             if isinstance(obj, dict):
                 node_id = obj.get("id")
-                node_type = obj.get("type")
-                if node_id is not None and node_type in ("shapes", "edges", "vertices"):
+                if node_id is not None:
                     state = obj.get("state")
                     if not isinstance(state, (list, tuple)) or len(state) < 2:
                         state = (1, 1)
                     states[node_id] = (int(state[0]), int(state[1]))
-                parts = obj.get("parts")
-                if isinstance(parts, list):
-                    for part in parts:
-                        collect_states(part, states)
+                for value in obj.values():
+                    if isinstance(value, (dict, list)):
+                        collect_states(value, states)
             elif isinstance(obj, list):
                 for item in obj:
                     collect_states(item, states)
@@ -1669,8 +1667,28 @@ class CadViewer:
         self.tracks = []
         self.widget.tracks = []
 
+    def _collect_track_paths(self, obj, paths=None):
+        if paths is None:
+            paths = set()
+
+        if isinstance(obj, dict):
+            node_id = obj.get("id")
+            if node_id is not None:
+                paths.add(node_id)
+            for value in obj.values():
+                if isinstance(value, (dict, list)):
+                    self._collect_track_paths(value, paths)
+        elif isinstance(obj, list):
+            for item in obj:
+                self._collect_track_paths(item, paths)
+
+        return paths
+
     def _check_track(self, track):
-        paths = self.widget.states.keys()
+        paths = list((self.widget.states or {}).keys())
+        if not paths and self.widget.shapes is not None:
+            paths = sorted(self._collect_track_paths(self.widget.shapes))
+
         if not any([(f"{path}/").startswith(f"{track.path}/") for path in paths]):
             raise ValueError(
                 f"{track.path} is not a valid subpath of any of {list(paths)}"
@@ -1912,30 +1930,30 @@ class CadViewer:
         filename (str): The name of the HTML file to export. Default is "cadquery.html".
         title (str): The title of the HTML document. Default is "CadQuery".
         """
-                from ._marimo import cadviewer_to_html
+        from ._marimo import cadviewer_to_html
 
-                path = Path(filename)
-                if not path.is_absolute():
-                        path = path.cwd() / path
+        path = Path(filename)
+        if not path.is_absolute():
+            path = path.cwd() / path
 
-                html = cadviewer_to_html(self)
-                document = dedent(
-                        f"""
-                        <!doctype html>
-                        <html lang="en">
-                            <head>
-                                <meta charset="utf-8">
-                                <meta name="viewport" content="width=device-width, initial-scale=1">
-                                <title>{escape(title)}</title>
-                            </head>
-                            <body style="margin:0;padding:24px;font-family:sans-serif;background:#fff;">
-                                {html}
-                            </body>
-                        </html>
-                        """
+        html = cadviewer_to_html(self)
+        document = dedent(
+            f"""
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="utf-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1">
+                    <title>{escape(title)}</title>
+                </head>
+                <body style="margin:0;padding:24px;font-family:sans-serif;background:#fff;">
+                    {html}
+                </body>
+            </html>
+            """
         )
-                path.write_text(document, encoding="utf-8")
-                print(f"Saved CAD view HTML to {path}")
+        path.write_text(document, encoding="utf-8")
+        print(f"Saved CAD view HTML to {path}")
 
     #
     # Custom message handling

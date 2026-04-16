@@ -24,14 +24,17 @@ def _():
     import numpy as np
     import json
     import time
-    import ipywidgets as widgets
+    from pathlib import Path
     from cad_viewer_widget import AnimationTrack, show, open_viewer
     from cad_viewer_widget.utils import numpyify
+
     names = ['b123d_assembly', 'box1', 'boxes', 'dirbox', 'edges', 'faces', 'hexapod', 'orientbox', 'profile4040', 'single_edges', 'torus_knot']
+    examples_dir = Path(__file__).resolve().parents[1] / 'examples'
     objects = {}
     for _name in names:
-        with open(f'../examples/{_name}.json', 'r') as fd:
+        with open(examples_dir / f'{_name}.json', 'r', encoding='utf-8') as fd:
             objects[_name] = numpyify(json.load(fd))
+
     return (
         AnimationTrack,
         names,
@@ -40,7 +43,6 @@ def _():
         open_viewer,
         show,
         time,
-        widgets,
     )
 
 
@@ -555,18 +557,16 @@ def _(open_viewer):
 
 
 @app.cell
-def _(names, objects, show, widgets):
-    menu = widgets.Dropdown(options=names, value=names[0], description='Number:', disabled=False)
-    _control = 'trackball'
-
-    def on_change(change):
-        if change['type'] == 'change' and change['name'] == 'value':
-            _name = change['new']
-            show(objects[_name], title='Examples', control=_control, debug=True)
-    menu.observe(on_change)
-    show(objects[names[0]], title='Examples', control=_control, debug=True)
-    #    zoom=0.75,
+def _(mo, names):
+    menu = mo.ui.dropdown(options=names, value=names[0], label='Example')
     menu
+    return (menu,)
+
+
+@app.cell
+def _(menu, objects, show):
+    _control = 'trackball'
+    show(objects[menu.value], title='Examples', control=_control, debug=True)
     return
 
 

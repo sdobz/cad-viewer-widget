@@ -31,11 +31,39 @@ function toArrayBuffer(bufferLike) {
 // Decode a typed-array buffer descriptor sent from Python via anywidget.
 // obj = { shape: [N], dtype: "float32"|"uint32", buffer: <DataView|ArrayBuffer> }
 function convertBuffer(obj) {
+  if (obj == null) {
+    return obj;
+  }
   const ab = toArrayBuffer(obj.buffer);
   if (obj.dtype === "float32") return new Float32Array(ab);
   if (obj.dtype === "uint32") return new Uint32Array(ab);
   if (obj.dtype === "int32") return new Int32Array(ab);
   throw new Error("cad-viewer-widget: unknown dtype " + obj.dtype);
+}
+
+function maybeConvertBuffer(obj) {
+  if (obj == null) {
+    return obj;
+  }
+  if (ArrayBuffer.isView(obj) || obj instanceof ArrayBuffer) {
+    return obj;
+  }
+  if (typeof obj === "object" && obj.buffer != null && obj.dtype != null) {
+    return convertBuffer(obj);
+  }
+  return obj;
+}
+
+function resolveShapeRef(shape, instances) {
+  if (
+    shape != null &&
+    typeof shape === "object" &&
+    typeof shape.ref === "number" &&
+    Array.isArray(instances)
+  ) {
+    return instances[shape.ref] ?? null;
+  }
+  return shape;
 }
 
 // data = { data: { shapes: <tree>, states: { "/id": [1,1], ... } } }
@@ -44,6 +72,22 @@ function convertBuffer(obj) {
 function decode(data) {
   const payload = data.data;
   const stateMap = payload.states || {};
+  const instances = Array.isArray(payload.instances) ? payload.instances : [];
+
+  instances.forEach((instance) => {
+    if (!instance || typeof instance !== "object") {
+      return;
+    }
+    instance.vertices = maybeConvertBuffer(instance.vertices);
+    instance.normals = maybeConvertBuffer(instance.normals);
+    instance.triangles = maybeConvertBuffer(instance.triangles);
+    instance.obj_vertices = maybeConvertBuffer(instance.obj_vertices);
+    instance.face_types = maybeConvertBuffer(instance.face_types);
+    instance.edge_types = maybeConvertBuffer(instance.edge_types);
+    instance.triangles_per_face = maybeConvertBuffer(instance.triangles_per_face);
+    instance.segments_per_edge = maybeConvertBuffer(instance.segments_per_edge);
+    instance.edges = maybeConvertBuffer(instance.edges);
+  });
 
   function walk(node) {
     if (Array.isArray(node)) {
@@ -53,11 +97,15 @@ function decode(data) {
     if (!node || typeof node !== "object") return;
 
     if (node.type === "shapes") {
-      const s = node.shape;
-      s.vertices = convertBuffer(s.vertices);
-      s.normals = convertBuffer(s.normals);
-      s.triangles = convertBuffer(s.triangles);
-      // s.edges is a plain nested JS array produced by to_json — leave as-is
+      let s = resolveShapeRef(node.shape, instances);
+      if (!s || typeof s !== "object") {
+        throw new Error("cad-viewer-widget: invalid shape payload");
+      }
+      s.vertices = maybeConvertBuffer(s.vertices);
+      s.normals = maybeConvertBuffer(s.normals);
+      s.triangles = maybeConvertBuffer(s.triangles);
+      s.edges = maybeConvertBuffer(s.edges);
+      node.shape = s;
     }
 
     // Attach visibility state; default [faces visible, edges visible]

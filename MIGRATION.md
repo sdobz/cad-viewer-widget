@@ -126,10 +126,16 @@ Every milestone should clear these gates before you move on:
 - Removed dual-notebook formats; only marimo `.py` files remain
 - Validated: Both notebooks pass syntax checks; marimo can parse them
 
-### Milestone 5: marimo plugin integration (IN PROGRESS)
+### ✅ Milestone 5: marimo plugin integration (COMPLETE)
 
 - package metadata no longer defines Jupyter extension install paths
 - packaging changes do not remove framework-neutral converter or protocol modules
+- `export_html()` now works for marimo by emitting self-contained HTML
+- animation track validation now resolves IDs from normalized shape payloads
+- viewer mode helpers (`select_tree`, `select_clipping`) are available on `CadViewer`
+- marimo notebook demo no longer relies on `ipywidgets`; uses `mo.ui.dropdown`
+- demo example loading now uses absolute paths from notebook location
+- minimum width constraints were relaxed for marimo inline layouts
 
 ### Milestone 4: convert notebooks and notebook validation to marimo
 
@@ -448,8 +454,7 @@ The migration is complete only when all of the following are true:
 
 ## Current status
 
-✅ **Completed**: Milestones 1-4 (Python runtime, JS runtime, packaging, notebooks)
-⏳ **In Progress**: Milestone 5 (marimo rendering integration)
+✅ **Completed**: Milestones 1-5 (Python runtime, JS runtime, packaging, notebooks, marimo integration)
 ⏸️ **Pending**: Milestone 6 (docs purge)
 
 ## Suggested commit order
