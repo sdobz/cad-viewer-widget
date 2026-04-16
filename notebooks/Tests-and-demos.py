@@ -25,24 +25,19 @@ def _():
     import json
     import time
     import ipywidgets as widgets
-    from cad_viewer_widget import AnimationTrack, CadViewer, show, open_viewer, get_sidecar, get_sidecars, close_sidecar, close_sidecars, get_default_sidecar, set_default_sidecar
+    from cad_viewer_widget import AnimationTrack, show, open_viewer
     from cad_viewer_widget.utils import numpyify
     names = ['b123d_assembly', 'box1', 'boxes', 'dirbox', 'edges', 'faces', 'hexapod', 'orientbox', 'profile4040', 'single_edges', 'torus_knot']
     objects = {}
-    states = {}
     for _name in names:
         with open(f'../examples/{_name}.json', 'r') as fd:
             objects[_name] = numpyify(json.load(fd))
     return (
         AnimationTrack,
-        close_sidecars,
-        get_sidecar,
-        get_sidecars,
         names,
         np,
         objects,
         open_viewer,
-        set_default_sidecar,
         show,
         time,
         widgets,
@@ -58,7 +53,7 @@ def _(open_viewer):
 @app.cell
 def _(objects, show):
     _name = 'boxes'
-    cv_1 = show(objects[_name], glass=True, tools=True, grid=(True, False, True), title='CVW 1', anchor='right', height=500, cad_width=700, debug=True)
+    cv_1 = show(objects[_name], glass=True, tools=True, grid=(True, False, True), title='CVW 1', height=500, cad_width=700, debug=True)
     return (cv_1,)
 
 
@@ -140,13 +135,13 @@ def _(cv_1):
 @app.cell
 def _(objects, show):
     _name = 'hexapod'
-    cv2 = show(objects[_name], title='CVW 2', collapse='1', anchor='split-right', cad_width=1200, glass=True, reset_camera='reset')
+    cv2 = show(objects[_name], title='CVW 2', collapse='1', cad_width=1200, glass=True, reset_camera='reset')
     return (cv2,)
 
 
 @app.cell
-def _(get_sidecars):
-    get_sidecars()
+def _(cv2):
+    cv2.widget.id
     return
 
 
@@ -166,12 +161,6 @@ def _(cv_1):
 def _(cv2, cv_1):
     cv_1.close()
     cv2.close()
-    return
-
-
-@app.cell
-def _(get_sidecars):
-    get_sidecars()
     return
 
 
@@ -230,7 +219,7 @@ def _(cv_2):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    # Sidecar handling
+    # Viewer reuse and add_shapes
     """)
     return
 
@@ -247,7 +236,6 @@ def _(mo):
 def _(open_viewer):
     cv1 = open_viewer(
         title="CVW 1",
-        anchor="split-right",
         cad_width=750,
         tree_width=250,
         height=525,
@@ -290,13 +278,13 @@ def _(mo):
 @app.cell
 def _(objects, show):
     _name = 'boxes'
-    cv2_1 = show(objects[_name], title='CVW 2', anchor='split-top', ortho=False, control='orbit', axes=True, grid=(True, False, False), ticks=40, normal_len=2, default_edgecolor='#f0f0f0', default_opacity=0.5, ambient_intensity=0.5, direct_intensity=0.3)
+    cv2_1 = show(objects[_name], title='CVW 2', ortho=False, control='orbit', axes=True, grid=(True, False, False), ticks=40, normal_len=2, default_edgecolor='#f0f0f0', default_opacity=0.5, ambient_intensity=0.5, direct_intensity=0.3)
     return (cv2_1,)
 
 
 @app.cell
-def _(get_sidecars):
-    get_sidecars()
+def _(cv2_1):
+    cv2_1.widget.id
     return
 
 
@@ -356,23 +344,16 @@ def _(cv_3):
     return
 
 
-@app.cell
-def _(get_sidecars):
-    get_sidecars()
-    return
-
-
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## Use default sidecar
+    ## Additional viewers
     """)
     return
 
 
 @app.cell
-def _(set_default_sidecar):
-    set_default_sidecar("CVW 1")
+def _():
     return
 
 
@@ -397,26 +378,21 @@ def _(cv_4):
 
 
 @app.cell
-def _(get_sidecars):
-    get_sidecars()
+def _(cv_4):
+    cv_4.widget.id
     return
 
 
 @app.cell
-def _(cv_4, get_sidecar):
-    get_sidecar('CVW 1') == cv_4
+def _(cv2_2):
+    cv2_2.widget.id
     return
 
 
 @app.cell
-def _(cv_4, get_sidecar):
-    get_sidecar('CVW 2') == cv_4
-    return
-
-
-@app.cell
-def _(close_sidecars):
-    close_sidecars()
+def _(cv2_2, cv_4):
+    cv_4.close()
+    cv2_2.close()
     return
 
 
@@ -557,8 +533,10 @@ def _(cv_6):
 
 
 @app.cell
-def _(close_sidecars):
-    close_sidecars()
+def _(cv1_1, cv_5, cv_6):
+    cv1_1.close()
+    cv_5.close()
+    cv_6.close()
     return
 
 
@@ -572,7 +550,7 @@ def _(mo):
 
 @app.cell
 def _(open_viewer):
-    cv_7 = open_viewer(title='Examples', anchor='right', cad_width=700, height=525, glass=False)
+    cv_7 = open_viewer(title='Examples', cad_width=700, height=525, glass=False)
     return (cv_7,)
 
 
@@ -611,8 +589,8 @@ def _(cv_7):
 
 
 @app.cell
-def _(close_sidecars):
-    close_sidecars()
+def _(cv_7):
+    cv_7.close()
     return
 
 
@@ -900,8 +878,10 @@ def _(cv_10, time):
 
 
 @app.cell
-def _(close_sidecars):
-    close_sidecars()
+def _(cv_10, cv_8, cv_9):
+    cv_8.close()
+    cv_9.close()
+    cv_10.close()
     return
 
 
@@ -977,8 +957,8 @@ def _(cv_11):
 
 
 @app.cell
-def _(close_sidecars):
-    close_sidecars()
+def _(cv_11):
+    cv_11.close()
     return
 
 

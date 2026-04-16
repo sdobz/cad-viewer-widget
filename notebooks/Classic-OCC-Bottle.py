@@ -361,7 +361,7 @@ def _(mo):
 
 @app.cell
 def _():
-    from cad_viewer_widget import show, close_sidecars, CadViewer
+    from cad_viewer_widget import show, CadViewer
 
     return CadViewer, show
 
@@ -392,14 +392,13 @@ def _(bottle, render, show):
 @app.cell(hide_code=True)
 def _(mo):
     mo.md(r"""
-    ## In a sidecar
+    ## Another inline viewer
     """)
     return
 
 
 @app.cell
 def _(bottle, render, show):
-    # Note: title/anchor sidecar features are Jupyter-only; viewer renders inline here
     cv_1 = show(render(bottle, 'Bottle', mesh_quality=0.25)[0], height=800, axes=True, ortho=True, control='orbit', grid=(False, False, False), transparent=True)
     cv_1
     return (cv_1,)

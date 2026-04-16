@@ -71,11 +71,6 @@ search = '_module_version = Unicode("{current_version}"'
 replace = '_module_version = Unicode("{new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "cad_viewer_widget/sidecar.py"
-search = '_module_version = Unicode("{current_version}"'
-replace = '_module_version = Unicode("{new_version}"'
-
-[[tool.bumpversion.files]]
 filename = "js/package.json"
 search = '"version": "{current_version}"'
 replace = '"version": "{new_version}"'

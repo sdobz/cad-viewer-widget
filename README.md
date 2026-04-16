@@ -57,7 +57,7 @@ If you are not using Nix, provide equivalent system tools yourself and then run 
 
 ## Build workflow
 
-Build the JavaScript bundle and the labextension artifacts:
+Build the JavaScript bundle:
 
 ```bash
 cd js
@@ -98,4 +98,4 @@ The following files remain useful while porting behavior:
 - `notebooks/Classic-OCC-Bottle.ipynb`
 - `examples/`
 
-They document expected viewer behavior, but the long-term goal is to replace Jupyter-centric examples with marimo-native ones.
+They document expected viewer behavior, but the long-term goal is to replace Jupyter-centric examples with marimo-native ones. The Jupyter-only sidecar workflow is no longer part of the supported runtime.

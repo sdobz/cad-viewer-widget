@@ -2,6 +2,7 @@
 """This module is the Python part of the CAD Viewer widget"""
 
 import base64
+from html import escape
 import orjson
 from pathlib import Path
 from textwrap import dedent
@@ -270,13 +271,10 @@ class CadViewerWidget(
     #
 
     title = Unicode(allow_none=True).tag(sync=True)
-    "unicode string of the title of the sidecar to be used. None means CAD view will be opened in cell"
-
-    anchor = Unicode(allow_none=True).tag(sync=True)
-    "unicode string whether to add a view to the right sidebar ('right') or as a tab to the main window ('tab')"
+    "unicode string: Optional title associated with the viewer instance"
 
     cad_width = Integer().tag(sync=True)
-    "unicode string: Width of the canvas element for cell viewer and right sidecar"
+    "unicode string: Width of the canvas element"
 
     height = Integer(allow_none=True).tag(sync=True)
     "int: Height of the canvas element for cell viewer"
@@ -285,7 +283,7 @@ class CadViewerWidget(
     "int: Width of the navigation tree element"
 
     aspect_ratio = Float(allow_none=True, default_value=None).tag(sync=True)
-    "float: aspect ratio for sidecar"
+    "float: Preferred aspect ratio for the viewer"
 
     theme = Unicode(allow_none=True).tag(sync=True)
     "unicode string: UI theme, can be 'dark' or 'light' (default)"
@@ -593,7 +591,6 @@ class CadViewer:
         tools=True,
         pinning=False,
         title=None,
-        anchor=None,
         new_tree_behavior=True,
         id_=None,
     ):
@@ -613,7 +610,6 @@ class CadViewer:
             tools=tools,
             pinning=pinning,
             title=title,
-            anchor=anchor,
             new_tree_behavior=new_tree_behavior,
             up="Z",
             control="trackball",
@@ -941,6 +937,26 @@ class CadViewer:
         if grid is None:
             grid = [False, False, False]
 
+        def collect_states(obj, states=None):
+            if states is None:
+                states = {}
+            if isinstance(obj, dict):
+                node_id = obj.get("id")
+                node_type = obj.get("type")
+                if node_id is not None and node_type in ("shapes", "edges", "vertices"):
+                    state = obj.get("state")
+                    if not isinstance(state, (list, tuple)) or len(state) < 2:
+                        state = (1, 1)
+                    states[node_id] = (int(state[0]), int(state[1]))
+                parts = obj.get("parts")
+                if isinstance(parts, list):
+                    for part in parts:
+                        collect_states(part, states)
+            elif isinstance(obj, list):
+                for item in obj:
+                    collect_states(item, states)
+            return states
+
         self.widget.debug = debug
         self.widget.initialize = True
 
@@ -952,6 +968,7 @@ class CadViewer:
 
         with self.widget.hold_trait_notifications():
             self.widget.shapes = shapes
+            self.widget.states = collect_states(shapes)
 
             self.widget.default_edgecolor = default_edgecolor
             self.widget.default_opacity = default_opacity
@@ -1331,6 +1348,30 @@ class CadViewer:
     @clip_slider_2.setter
     def clip_slider_2(self, value):
         self.widget.clip_slider_2 = value
+
+    @property
+    def clip_value_0(self):
+        return self.clip_slider_0
+
+    @clip_value_0.setter
+    def clip_value_0(self, value):
+        self.clip_slider_0 = value
+
+    @property
+    def clip_value_1(self):
+        return self.clip_slider_1
+
+    @clip_value_1.setter
+    def clip_value_1(self, value):
+        self.clip_slider_1 = value
+
+    @property
+    def clip_value_2(self):
+        return self.clip_slider_2
+
+    @clip_value_2.setter
+    def clip_value_2(self, value):
+        self.clip_slider_2 = value
 
     @property
     def clip_planes(self):
@@ -1762,6 +1803,16 @@ class CadViewer:
     def tab(self, value):
         self.widget.tab = value
 
+    def select_tree(self):
+        """Activate the tree tab in the viewer UI."""
+
+        self.tab = "tree"
+
+    def select_clipping(self):
+        """Activate the clipping tab in the viewer UI."""
+
+        self.tab = "clip"
+
     #
     # Rotations
     #
@@ -1860,17 +1911,31 @@ class CadViewer:
         Parameters:
         filename (str): The name of the HTML file to export. Default is "cadquery.html".
         title (str): The title of the HTML document. Default is "CadQuery".
-
-        Raises:
-        RuntimeError: If the widget is displayed in a sidecar.
-
-        Notes:
-        - This method temporarily disables pinning while exporting the HTML.
-        - The state of the widget is captured and embedded in the HTML file.
         """
-        raise NotImplementedError(
-            "export_html is tied to Jupyter embedding and is unavailable in the marimo migration state"
+                from ._marimo import cadviewer_to_html
+
+                path = Path(filename)
+                if not path.is_absolute():
+                        path = path.cwd() / path
+
+                html = cadviewer_to_html(self)
+                document = dedent(
+                        f"""
+                        <!doctype html>
+                        <html lang="en">
+                            <head>
+                                <meta charset="utf-8">
+                                <meta name="viewport" content="width=device-width, initial-scale=1">
+                                <title>{escape(title)}</title>
+                            </head>
+                            <body style="margin:0;padding:24px;font-family:sans-serif;background:#fff;">
+                                {html}
+                            </body>
+                        </html>
+                        """
         )
+                path.write_text(document, encoding="utf-8")
+                print(f"Saved CAD view HTML to {path}")
 
     #
     # Custom message handling
@@ -1921,7 +1986,6 @@ class CadViewer:
         """
         result = {
             "title": self.widget.title,
-            "anchor": self.widget.anchor,
             "cad_width": self.widget.cad_width,
             "height": self.widget.height,
             "tree_width": self.widget.tree_width,
@@ -1994,7 +2058,6 @@ class CadViewer:
                 f"""
                         DISPLAY
                 title:              {self.widget.title}
-                anchor:             {self.widget.anchor}
                 cad_width:          {self.widget.cad_width}
                 height:             {self.widget.height}
                 tree_width:         {self.widget.tree_width}

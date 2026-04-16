@@ -1,11 +1,8 @@
-A Jupyter widget to view cad objects
+A browser-side runtime for cad-viewer-widget.
 
-Package Install
----------------
-
-**Prerequisites**
-- [node](http://nodejs.org/)
+Build with:
 
 ```bash
-npm install --save cad-viewer-widget
+yarn install
+yarn build
 ```

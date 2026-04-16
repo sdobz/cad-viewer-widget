@@ -86,7 +86,6 @@ export class CadViewerModel extends RuntimeModel {
       // Display traits
 
       title: null,
-      anchor: null,
       cad_width: null,
       height: null,
       tree_width: null,
@@ -240,9 +239,6 @@ export class CadViewerView extends RuntimeView {
       this.init = false;
       this.disposed = false;
 
-      this.title = this.model.get("title");
-      this.anchor = this.model.get("anchor");
-
       this.container = null;
       this.container_id = null;
 
@@ -391,7 +387,7 @@ export class CadViewerView extends RuntimeView {
         height = height - 60;
         const aspect_ratio = this.model.get("aspect_ratio");
 
-        if (this.title != null && aspect_ratio > 0) {
+        if (aspect_ratio > 0) {
           height = Math.round(Math.min(height, aspect_ratio * width));
           if (width < height) {
             height = Math.round(Math.min(height, aspect_ratio * width));
@@ -428,13 +424,7 @@ export class CadViewerView extends RuntimeView {
       this.container_id = container.id;
       this.container = container;
 
-      const sidecar = this.title == null ? null : App.getSidecar(this.title);
-
-      if (sidecar == null) {
-        App.addCellViewer(container.id, this);
-      } else {
-        sidecar.registerChild(this);
-      }
+      App.addCellViewer(container.id, this);
       this.el.appendChild(container);
 
       let size = container.parentNode.parentNode.getBoundingClientRect();
@@ -445,29 +435,15 @@ export class CadViewerView extends RuntimeView {
         this.model.save_changes();
       }
 
-      if (displayOptions.cadWidth < size.width && sidecar != null) {
-        // anchor != right
-        this.width =
-          Math.round(
-            size.width - (displayOptions.glass ? 0 : displayOptions.treeWidth)
-          ) - 12;
-        displayOptions.cadWidth = this.width;
-        this.model.set("cad_width", this.width);
-        this.model.save_changes();
-      }
-
       this.display = new Display(container, displayOptions);
 
-      if (sidecar != null) {
-        // do not resize cell viewers
-        this.observer = new ResizeObserver((entries) => {
-          for (const entry of entries) {
-            this.resize(entry.contentRect);
-          }
-        });
+      this.observer = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          this.resize(entry.contentRect);
+        }
+      });
 
-        this.observer.observe(container.parentNode.parentNode);
-      }
+      this.observer.observe(container.parentNode.parentNode);
     }
 
     this.display.glassMode(displayOptions.glass);
@@ -515,7 +491,7 @@ export class CadViewerView extends RuntimeView {
       this.showViewer();
     } else {
       this.addShapes();
-      if (this.title != null) {
+      if (this.container != null) {
         this.resize(
           this.container.parentNode.parentNode.getBoundingClientRect()
         );
@@ -1029,18 +1005,7 @@ export class CadViewerView extends RuntimeView {
         this._debug = change.changed[key];
         break;
       case "disposed":
-        if (this.title != null) {
-          const sidecar = App.getSidecar(this.title);
-          if (sidecar != null) {
-            if (this.anchor == "right") {
-              sidecar.disposeSidebar(null, sidecar.widget);
-            } else {
-              sidecar.widget.title.owner.dispose();
-            }
-          }
-        } else {
-          this.dispose();
-        }
+        this.dispose();
         break;
       case "measure":
         this.viewer.handleBackendResponse(change.changed[key]);

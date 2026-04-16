@@ -19,8 +19,8 @@
             python.pkgs.pip
             python.pkgs.virtualenv
             python.pkgs.conda
-            pkgs.nodejs_20   # required by @jupyterlab/builder
-            pkgs.yarn        # used by the hatch build hooks
+            pkgs.nodejs_20
+            pkgs.yarn
           ];
 
           shellHook = ''
@@ -35,10 +35,10 @@
             echo "    python -m pip install -e ."
             echo "    cd js && yarn install && cd .."
             echo ""
-            echo "  Build JS + labextension (production):"
+            echo "  Build JS bundle (production):"
             echo "    cd js && yarn build:prod && cd .."
             echo ""
-            echo "  Build JS + labextension (dev/watch):"
+            echo "  Build JS bundle (dev/watch):"
             echo "    cd js && yarn build && cd .."
             echo "    cd js && yarn watch   (in a second terminal)"
             echo ""

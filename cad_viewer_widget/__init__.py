@@ -3,32 +3,18 @@ from ._version import __version__
 
 from .widget import AnimationTrack, CadViewer, get_viewer_by_id, get_viewers_by_id
 
-from .sidecar import (
-    get_sidecar,
-    get_sidecars,
-    set_sidecar,
-    close_sidecars,
-    close_sidecar,
-    get_default as get_default_sidecar,
-    set_default as _set_default_sidecar,
-)
-
-from .utils import display_args, viewer_args, warn
+from .utils import display_args, viewer_args
 
 
-MESSAGES = {
-    "split-left": "split-left window",
-    "split-right": "split-right window",
-    "split-top": "split-top window",
-    "split_bottom": "split-bottom window",
-    "right": "sidecar window",
-    None: "sidecar window",
-}
+def _normalize_cad_width(cad_width):
+    if cad_width is not None and cad_width < 780:
+        cad_width = 780
+        print("`cad_width` cannot be smaller than 780, setting to 780")
+    return cad_width
 
 
 def open_viewer(
     title=None,
-    anchor="right",
     cad_width=800,
     tree_width=250,
     height=600,
@@ -37,18 +23,13 @@ def open_viewer(
     glass=True,
     tools=True,
     pinning=True,
-    default=True,
 ):
-
-    if cad_width is not None and cad_width < 780:
-        cad_width = 780
-        print("`cad_width` cannot be smaller than 780, setting to 780")
+    cad_width = _normalize_cad_width(cad_width)
 
     id_ = str(uuid.uuid4())
 
     viewer = CadViewer(
         title=None if title in (None, "") else title,
-        anchor=None if title in (None, "") else anchor,
         cad_width=cad_width,
         tree_width=tree_width,
         aspect_ratio=aspect_ratio,
@@ -60,11 +41,6 @@ def open_viewer(
         id_=id_,
     )
 
-    if title not in (None, ""):
-        set_sidecar(title, viewer)
-        if default:
-            _set_default_sidecar(title)
-
     viewer.register_viewer()
     return viewer
 
@@ -75,7 +51,6 @@ def show(
     #
     # Viewer options
     title=None,
-    anchor=None,
     cad_width=None,
     tree_width=None,
     aspect_ratio=None,
@@ -199,141 +174,68 @@ def show(
         timeit:            Show timing information from level 0-3 (default=False)
     """
 
-    viewer = None
-    if title is not None:
-
-        viewer = get_sidecar(title)
-        if viewer is None:
-            if anchor is None:
-                anchor = "right"
-        else:
-            # clean the shapes so that the same object can be show several times
-            viewer.widget.shapes = {}
-
-            if anchor is not None and viewer.widget.anchor != anchor:
-                warn(
-                    f"Parameter 'anchor' cannot be changed after sidecar with title '{title}' has been openend"
-                )
-                anchor = viewer.widget.anchor
-            if theme is not None and viewer.widget.theme != theme:
-                warn(
-                    f"Parameter 'theme' cannot be changed after sidecar with title '{title}' has been openend"
-                )
-                theme = viewer.widget.theme
-            if pinning:
-                warn("Pinning not suported for sidecar views")
-            if glass is not None and viewer.glass != glass:
-                viewer.glass = glass
-            if tools is not None and viewer.tools != tools:
-                viewer.tools = tools
-
-    def preset(key, val, default):
-        if viewer is None or viewer.widget.shapes == {}:
-            return default if val is None else val
-        else:
-            if key in (
-                "position",
-                "quaternion",
-                "target",
-                "zoom",
-            ):
-                return getattr(viewer.widget, key) if val is None else val
-            else:
-                return default if val is None else val
+    def preset(val, default):
+        return default if val is None else val
 
     kwargs = {}
 
-    if viewer is None:
-        kwargs["glass"] = preset("glass", glass, True)
-        kwargs["tools"] = preset("tools", tools, True)
-    else:
-        kwargs["glass"] = preset("glass", glass, viewer.widget.glass)
-        kwargs["tools"] = preset("tools", tools, viewer.widget.tools)
+    kwargs["glass"] = preset(glass, True)
+    kwargs["tools"] = preset(tools, True)
+    kwargs["height"] = preset(height, 600)
+    kwargs["cad_width"] = _normalize_cad_width(preset(cad_width, 800))
+    kwargs["tree_width"] = preset(tree_width, 250)
+    kwargs["aspect_ratio"] = preset(aspect_ratio, 0.75)
 
-    kwargs["height"] = preset("height", height, 600)
-    kwargs["cad_width"] = preset("cad_width", cad_width, 800)
-    kwargs["tree_width"] = preset("tree_width", tree_width, 250)
-    kwargs["aspect_ratio"] = preset("aspect_ratio", aspect_ratio, 0.75)
-
-    kwargs["new_tree_behavior"] = preset("new_tree_behavior", new_tree_behavior, True)
-    kwargs["theme"] = preset("theme", theme, "browser")
-    kwargs["normal_len"] = preset("normal_len", normal_len, 0)
-    kwargs["default_edgecolor"] = preset(
-        "default_edgecolor", default_edgecolor, "#707070"
-    )
-    kwargs["default_opacity"] = preset("default_opacity", default_opacity, 0.5)
-    kwargs["ambient_intensity"] = preset("ambient_intensity", ambient_intensity, 1.0)
-    kwargs["direct_intensity"] = preset("direct_intensity", direct_intensity, 1.1)
-    kwargs["metalness"] = preset("metalness", metalness, 0.3)
-    kwargs["roughness"] = preset("roughness", roughness, 0.65)
-    kwargs["control"] = preset("control", control, "trackball")
-    kwargs["up"] = preset("up", up, "Z")
-    kwargs["ortho"] = preset("ortho", ortho, True)
-    kwargs["axes"] = preset("axes", axes, False)
-    kwargs["axes0"] = preset("axes0", axes0, False)
-    kwargs["grid"] = preset("grid", grid, [False, False, False])
-    kwargs["center_grid"] = preset("grid", center_grid, False)
-    kwargs["ticks"] = preset("ticks", ticks, 10)
-    kwargs["explode"] = preset("explode", explode, False)
-    kwargs["transparent"] = preset("transparent", transparent, False)
-    kwargs["black_edges"] = preset("black_edges", black_edges, False)
-    kwargs["collapse"] = preset("collapse", collapse, "R")
-    kwargs["reset_camera"] = preset("reset_camera", reset_camera, "reset")
-    kwargs["zoom_speed"] = preset("zoom_speed", zoom_speed, 0.5)
-    kwargs["pan_speed"] = preset("pan_speed", pan_speed, 0.5)
-    kwargs["rotate_speed"] = preset("rotate_speed", rotate_speed, 1.0)
-    kwargs["timeit"] = preset("timeit", timeit, False)
-    kwargs["debug"] = preset("debug", debug, False)
+    kwargs["new_tree_behavior"] = preset(new_tree_behavior, True)
+    kwargs["theme"] = preset(theme, "browser")
+    kwargs["normal_len"] = preset(normal_len, 0)
+    kwargs["default_edgecolor"] = preset(default_edgecolor, "#707070")
+    kwargs["default_opacity"] = preset(default_opacity, 0.5)
+    kwargs["ambient_intensity"] = preset(ambient_intensity, 1.0)
+    kwargs["direct_intensity"] = preset(direct_intensity, 1.1)
+    kwargs["metalness"] = preset(metalness, 0.3)
+    kwargs["roughness"] = preset(roughness, 0.65)
+    kwargs["control"] = preset(control, "trackball")
+    kwargs["up"] = preset(up, "Z")
+    kwargs["ortho"] = preset(ortho, True)
+    kwargs["axes"] = preset(axes, False)
+    kwargs["axes0"] = preset(axes0, False)
+    kwargs["grid"] = preset(grid, [False, False, False])
+    kwargs["center_grid"] = preset(center_grid, False)
+    kwargs["ticks"] = preset(ticks, 10)
+    kwargs["explode"] = preset(explode, False)
+    kwargs["transparent"] = preset(transparent, False)
+    kwargs["black_edges"] = preset(black_edges, False)
+    kwargs["collapse"] = preset(collapse, "R")
+    kwargs["reset_camera"] = preset(reset_camera, "reset")
+    kwargs["zoom_speed"] = preset(zoom_speed, 0.5)
+    kwargs["pan_speed"] = preset(pan_speed, 0.5)
+    kwargs["rotate_speed"] = preset(rotate_speed, 1.0)
+    kwargs["timeit"] = preset(timeit, False)
+    kwargs["debug"] = preset(debug, False)
     if position is not None:
-        kwargs["position"] = preset("position", position, None)
+        kwargs["position"] = position
     if quaternion is not None:
-        kwargs["quaternion"] = preset("quaternion", quaternion, None)
+        kwargs["quaternion"] = quaternion
     if target is not None:
-        kwargs["target"] = preset("target", target, None)
+        kwargs["target"] = target
     if zoom is not None:
-        kwargs["zoom"] = preset("zoom", zoom, None)
-    kwargs["clip_slider_0"] = preset("clip_slider_0", clip_slider_0, None)
-    kwargs["clip_slider_1"] = preset("clip_slider_1", clip_slider_1, None)
-    kwargs["clip_slider_2"] = preset("clip_slider_2", clip_slider_2, None)
-    kwargs["clip_normal_0"] = preset("clip_normal_0", clip_normal_0, [-1, 0, 0])
-    kwargs["clip_normal_1"] = preset("clip_normal_1", clip_normal_1, [0, -1, 0])
-    kwargs["clip_normal_2"] = preset("clip_normal_2", clip_normal_2, [0, 0, -1])
-    kwargs["clip_intersection"] = preset("clip_intersection", clip_intersection, False)
-    kwargs["clip_planes"] = preset("clip_planes", clip_planes, False)
-    kwargs["clip_object_colors"] = preset(
-        "clip_object_colors", clip_object_colors, False
+        kwargs["zoom"] = zoom
+    kwargs["clip_slider_0"] = preset(clip_slider_0, None)
+    kwargs["clip_slider_1"] = preset(clip_slider_1, None)
+    kwargs["clip_slider_2"] = preset(clip_slider_2, None)
+    kwargs["clip_normal_0"] = preset(clip_normal_0, [-1, 0, 0])
+    kwargs["clip_normal_1"] = preset(clip_normal_1, [0, -1, 0])
+    kwargs["clip_normal_2"] = preset(clip_normal_2, [0, 0, -1])
+    kwargs["clip_intersection"] = preset(clip_intersection, False)
+    kwargs["clip_planes"] = preset(clip_planes, False)
+    kwargs["clip_object_colors"] = preset(clip_object_colors, False)
+
+    viewer = open_viewer(
+        title=title,
+        pinning=True if pinning is None else pinning,
+        **display_args(kwargs),
     )
 
-    if title is None:
-        if get_default_sidecar() is None:
-            viewer = open_viewer(
-                title=None,
-                anchor=None,
-                pinning=True if pinning is None else pinning,
-                **display_args(kwargs),
-            )
-        else:
-            title = get_default_sidecar()
-            viewer = get_sidecar(title)
-            if viewer is None:
-                viewer = open_viewer(
-                    title=title,
-                    anchor=None,
-                    pinning=False if pinning is None else pinning,
-                    **display_args(kwargs),
-                )
-    else:
-        viewer = get_sidecar(title)
-        if viewer is None:
-            viewer = open_viewer(
-                title=title, pinning=pinning, anchor=anchor, **display_args(kwargs)
-            )
-    # print(dict(sorted(viewer_args(kwargs).items())))
     viewer.add_shapes(shapes, tracks, **viewer_args(kwargs))
     return viewer
-
-
-def set_default_sidecar(title, anchor="right"):
-    _set_default_sidecar(title)
-    if get_sidecar(title) is None:
-        open_viewer(title, anchor=anchor)

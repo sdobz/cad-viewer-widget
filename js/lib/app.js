@@ -1,26 +1,11 @@
-var _sidecars = {};
 var _cellViewers = {};
 var _currentCadViewer = null;
 
 export default {
   getCadViewers() {
     return {
-      sidecar: _sidecars,
       cell: _cellViewers
     };
-  },
-
-  getSidecar(title) {
-    return _sidecars[title];
-  },
-
-  addSidecar(title, viewer) {
-    _currentCadViewer = viewer;
-    _sidecars[title] = viewer;
-  },
-
-  removeSidecar(title) {
-    delete _sidecars[title];
   },
 
   getCurrentViewer() {
