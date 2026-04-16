@@ -56,6 +56,7 @@ def _(open_viewer):
 def _(objects, show):
     _name = 'boxes'
     cv_1 = show(objects[_name], glass=True, tools=True, grid=(True, False, True), title='CVW 1', height=500, cad_width=700, debug=True)
+    cv_1
     return (cv_1,)
 
 
@@ -138,6 +139,7 @@ def _(cv_1):
 def _(objects, show):
     _name = 'hexapod'
     cv2 = show(objects[_name], title='CVW 2', collapse='1', cad_width=1200, glass=True, reset_camera='reset')
+    cv2
     return (cv2,)
 
 
@@ -179,6 +181,7 @@ def _(objects, show):
     _name = 'boxes'
     _control = 'orbit'
     cv_2 = show(objects[_name], control=_control, up='Z', cad_width=750, tree_width=250, height=500, glass=True, debug=False, collapse='1', theme='browser')
+    cv_2
     return (cv_2,)
 
 
@@ -243,6 +246,7 @@ def _(open_viewer):
         height=525,
         glass=True
     )
+    cv1
     return (cv1,)
 
 
@@ -281,6 +285,7 @@ def _(mo):
 def _(objects, show):
     _name = 'boxes'
     cv2_1 = show(objects[_name], title='CVW 2', ortho=False, control='orbit', axes=True, grid=(True, False, False), ticks=40, normal_len=2, default_edgecolor='#f0f0f0', default_opacity=0.5, ambient_intensity=0.5, direct_intensity=0.3)
+    cv2_1
     return (cv2_1,)
 
 
@@ -307,6 +312,7 @@ def _(objects, show):
 def _(objects, show):
     _name = 'hexapod'
     cv_3 = show(objects[_name], title='CVW 2', collapse='R', glass=True, reset_camera='reset')
+    cv_3
     return (cv_3,)
 
 
@@ -363,6 +369,7 @@ def _():
 def _(objects, show):
     _name = 'edges'
     cv_4 = show(objects[_name], height=600, cad_width=800, reset_camera='reset', debug=True)
+    cv_4
     return (cv_4,)
 
 
@@ -434,6 +441,7 @@ def _(mo):
 def _(objects, show):
     _name = 'edges'
     cv1_1 = show(objects[_name], cad_width=800, title='Trackball', reset_camera='reset', debug=True)
+    cv1_1
     return (cv1_1,)
 
 
@@ -487,6 +495,7 @@ def _(mo):
 @app.cell
 def _(open_viewer):
     cv_6 = open_viewer(title='Orbit', height=525)
+    cv_6
     return (cv_6,)
 
 
@@ -553,6 +562,7 @@ def _(mo):
 @app.cell
 def _(open_viewer):
     cv_7 = open_viewer(title='Examples', cad_width=700, height=525, glass=False)
+    cv_7
     return (cv_7,)
 
 
@@ -605,6 +615,7 @@ def _(mo):
 @app.cell
 def _(objects, show):
     cv_8 = show(objects['hexapod'], title='Examples', collapse='E', debug=True)
+    cv_8
     return (cv_8,)
 
 
@@ -821,6 +832,7 @@ def _(mo):
 def _(objects, show):
     _name = 'hexapod'
     cv_9 = show(objects[_name], control='trackball', title='Examples', reset_camera='reset', glass=False)
+    cv_9
     return (cv_9,)
 
 
@@ -856,6 +868,7 @@ def _(mo):
 def _(objects, show):
     _name = 'hexapod'
     cv_10 = show(objects[_name], control='orbit', title='Examples', reset_camera='reset')
+    cv_10
     return (cv_10,)
 
 
@@ -897,6 +910,7 @@ def _(mo):
 def _(objects, show):
     _name = 'hexapod'
     cv_11 = show(objects[_name], title='Animation', height=600, cad_width=800, control='trackball', tools=True, axes=True, axes0=True, grid=[True, False, False])
+    cv_11
     return (cv_11,)
 
 
