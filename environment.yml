@@ -1,13 +1,13 @@
+name: cad-viewer-widget
 channels:
   - defaults
-  - cadquery
   - conda-forge
 dependencies:
   - python=3.12
   - pip=26.0.1
   - numpy=2.4.3
   - pythonocc-core=7.9.3
+  - marimo==0.23.1
   - pip:
-  - anywidget
-    - marimo==0.23.1
-    - -e .
+      - anywidget
+      - -e .

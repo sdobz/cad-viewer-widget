@@ -11,6 +11,8 @@ node_modules/
 .vscode/dryrun.log
 .vscode/targets.log
 
+.mamba
+
 # Compiled javascript
 
 # OS X

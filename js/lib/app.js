@@ -24,7 +24,9 @@ export default {
 
   cleanupCellViewers() {
     for (const [id, viewer] of Object.entries(_cellViewers)) {
-      if (document.getElementById(id) == null) {
+      const container = viewer?.container;
+      const isAlive = container != null && container.isConnected;
+      if (!isAlive) {
         viewer.dispose();
         delete _cellViewers[id];
         console.log(`cad-viewer-widget: Cell viewer "${id}" removed`);

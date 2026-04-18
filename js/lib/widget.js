@@ -272,8 +272,9 @@ export class CadViewerView extends RuntimeView {
       this.height = null;
       this.width = null;
 
-      // find and remove old cell viewers, e.g. when run the same cell
-      App.cleanupCellViewers();
+      // Avoid global cleanup during init: reactive hosts (marimo) can
+      // transiently detach sibling nodes while reconciling, which would
+      // incorrectly dispose still-live viewers.
 
       // TODO: needed for embedding?
       // this.showViewer();
