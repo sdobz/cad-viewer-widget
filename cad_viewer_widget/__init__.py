@@ -231,11 +231,16 @@ def show(
     kwargs["clip_planes"] = preset(clip_planes, False)
     kwargs["clip_object_colors"] = preset(clip_object_colors, False)
 
-    viewer = open_viewer(
-        title=title,
-        pinning=True if pinning is None else pinning,
-        **display_args(kwargs),
-    )
+    # Reuse an existing viewer when title matches a registered widget ID.
+    existing = get_viewer_by_id(title) if title not in (None, "") else None
+    if existing is not None:
+        viewer = existing
+    else:
+        viewer = open_viewer(
+            title=title,
+            pinning=True if pinning is None else pinning,
+            **display_args(kwargs),
+        )
 
     viewer.add_shapes(shapes, tracks, **viewer_args(kwargs))
     return viewer

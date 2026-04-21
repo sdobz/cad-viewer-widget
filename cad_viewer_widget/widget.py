@@ -2100,7 +2100,7 @@ class CadViewer:
             "ticks": self.widget.ticks,
             "transparent": self.widget.transparent,
             "black_edges": self.widget.black_edges,
-            "collapse": self.widget.collapse,
+            "collapse": {"E": 2, "1": -1, "C": 0, "R": 1}.get(self.widget.collapse, self.widget.collapse),
             "tab": self.widget.tab,
             "clip_intersection": self.widget.clip_intersection,
             "clip_object_colors": self.widget.clip_object_colors,
