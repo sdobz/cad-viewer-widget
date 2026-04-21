@@ -91,7 +91,7 @@ def cadviewer_to_html(viewer) -> str:
         return f"""
 <div style="border:1px solid #d8d8d8;padding:12px;border-radius:8px;">
   <div style="font-weight:600;">CadViewer bundle not found</div>
-  <div style="margin:6px 0 0;">Expected one of: js/dist/index.js or cad_viewer_widget/static/index.js</div>
+  <div style="margin:6px 0 0;">Expected one of: js/dist/index.js or cad_viewer_widget_marimo/static/index.js</div>
   <details style="margin-top:10px;">
     <summary>Serialized state</summary>
     <pre style="margin-top:8px;max-height:300px;overflow:auto;">{state_json_escaped}</pre>

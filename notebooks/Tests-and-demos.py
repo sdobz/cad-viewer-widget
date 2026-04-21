@@ -25,8 +25,8 @@ def _():
     import json
     import time
     from pathlib import Path
-    from cad_viewer_widget import AnimationTrack, show, open_viewer
-    from cad_viewer_widget.utils import numpyify
+    from cad_viewer_widget_marimo import AnimationTrack, show, open_viewer
+    from cad_viewer_widget_marimo.utils import numpyify
 
     names = ['b123d_assembly', 'box1', 'boxes', 'dirbox', 'edges', 'faces', 'hexapod', 'orientbox', 'profile4040', 'single_edges', 'torus_knot']
     examples_dir = Path(__file__).resolve().parents[1] / 'examples'

@@ -384,7 +384,7 @@ class CadViewerWidget(
 
     tracks = List(allow_none=True).tag(sync=True)
     # pylint: disable=line-too-long
-    "unicode: Serialized list of animation track arrays, see [AnimationTrack.to_array](/widget.html#cad_viewer_widget.widget.AnimationTrack.to_array)"
+    "unicode: Serialized list of animation track arrays, see [AnimationTrack.to_array](/widget.html#cad_viewer_widget_marimo.widget.AnimationTrack.to_array)"
 
     timeit = Bool(allow_none=True, default_value=None).tag(sync=True)
     "bool: Whether to output timing info to the browser console (True) or not (False)"
@@ -768,7 +768,7 @@ class CadViewer:
         shapes : dict
             Nested tessellated shapes
         tracks : list or tuple, default None
-            List of animation track arrays, see [AnimationTrack.to_array](/widget.html#cad_viewer_widget.widget.AnimationTrack.to_array)
+            List of animation track arrays, see [AnimationTrack.to_array](/widget.html#cad_viewer_widget_marimo.widget.AnimationTrack.to_array)
         title: str, default: None
             Name of the title view to display the shapes.
         ortho : bool, default True
@@ -1137,7 +1137,7 @@ class CadViewer:
     def ambient_intensity(self):
         """
         Get or set the CadViewerWidget traitlet `ambient_intensity`.
-        see [CadViewerWidget.ambient_intensity](./widget.html#cad_viewer_widget.widget.CadViewerWidget.ambient_intensity)
+        see [CadViewerWidget.ambient_intensity](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.ambient_intensity)
         """
 
         return self.widget.ambient_intensity
@@ -1150,7 +1150,7 @@ class CadViewer:
     def direct_intensity(self):
         """
         Get or set the CadViewerWidget traitlet `direct_intensity`
-        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget.widget.CadViewerWidget.direct_intensity)
+        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.direct_intensity)
         """
 
         return self.widget.direct_intensity
@@ -1163,7 +1163,7 @@ class CadViewer:
     def metalness(self):
         """
         Get or set the CadViewerWidget traitlet `metalness`
-        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget.widget.CadViewerWidget.metalness)
+        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.metalness)
         """
 
         return self.widget.metalness
@@ -1176,7 +1176,7 @@ class CadViewer:
     def roughness(self):
         """
         Get or set the CadViewerWidget traitlet `roughness`
-        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget.widget.CadViewerWidget.roughness)
+        see [CadViewerWidget.direct_intensity](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.roughness)
         """
 
         return self.widget.roughness
@@ -1189,7 +1189,7 @@ class CadViewer:
     def axes(self):
         """
         Get or set the CadViewerWidget traitlet `axes`
-        see [CadViewerWidget.axes](./widget.html#cad_viewer_widget.widget.CadViewerWidget.axes)
+        see [CadViewerWidget.axes](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.axes)
         """
 
         return self.widget.axes
@@ -1202,7 +1202,7 @@ class CadViewer:
     def axes0(self):
         """
         Get or set the CadViewerWidget traitlet `axes0`
-        see [CadViewerWidget.axes0](./widget.html#cad_viewer_widget.widget.CadViewerWidget.axes0)
+        see [CadViewerWidget.axes0](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.axes0)
         """
 
         return self.widget.axes0
@@ -1215,7 +1215,7 @@ class CadViewer:
     def grid(self):
         """
         Get or set the CadViewerWidget traitlet `grid`
-        see [CadViewerWidget.grid](./widget.html#cad_viewer_widget.widget.CadViewerWidget.grid)
+        see [CadViewerWidget.grid](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.grid)
         """
 
         return self.widget.grid
@@ -1228,7 +1228,7 @@ class CadViewer:
     def center_grid(self):
         """
         Get or set the CadViewerWidget traitlet `center_grid`
-        see [CadViewerWidget.grid](./widget.html#cad_viewer_widget.widget.CadViewerWidget.center_grid)
+        see [CadViewerWidget.grid](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.center_grid)
         """
 
         return self.widget.center_grid
@@ -1241,7 +1241,7 @@ class CadViewer:
     def explode(self):
         """
         Get or set the CadViewerWidget traitlet `explode`
-        see [CadViewerWidget.explode](./widget.html#cad_viewer_widget.widget.CadViewerWidget.explode)
+        see [CadViewerWidget.explode](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.explode)
         """
 
         return self.widget.explode
@@ -1254,7 +1254,7 @@ class CadViewer:
     def ortho(self):
         """
         Get or set the CadViewerWidget traitlet `ortho`
-        see [CadViewerWidget.ortho](./widget.html#cad_viewer_widget.widget.CadViewerWidget.ortho)
+        see [CadViewerWidget.ortho](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.ortho)
         """
 
         return self.widget.ortho
@@ -1267,7 +1267,7 @@ class CadViewer:
     def transparent(self):
         """
         Get or set the CadViewerWidget traitlet `transparent`
-        see [CadViewerWidget.transparent](./widget.html#cad_viewer_widget.widget.CadViewerWidget.transparent)
+        see [CadViewerWidget.transparent](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.transparent)
         """
 
         return self.widget.transparent
@@ -1280,7 +1280,7 @@ class CadViewer:
     def black_edges(self):
         """
         Get or set the CadViewerWidget traitlet `black_edges`
-        see [CadViewerWidget.black_edges](./widget.html#cad_viewer_widget.widget.CadViewerWidget.black_edges)
+        see [CadViewerWidget.black_edges](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.black_edges)
         """
 
         return self.widget.black_edges
@@ -1301,7 +1301,7 @@ class CadViewer:
     def default_edgecolor(self):
         """
         Get or set the CadViewerWidget traitlet `default_edgecolor`
-        see [CadViewerWidget.default_edgecolor](./widget.html#cad_viewer_widget.widget.CadViewerWidget.default_edgecolor)
+        see [CadViewerWidget.default_edgecolor](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.default_edgecolor)
         """
 
         return self.widget.default_edgecolor
@@ -1317,7 +1317,7 @@ class CadViewer:
     def default_opacity(self):
         """
         Get or set the CadViewerWidget traitlet `default_opacity`
-        see [CadViewerWidget.default_opacity](./widget.html#cad_viewer_widget.widget.CadViewerWidget.default_opacity)
+        see [CadViewerWidget.default_opacity](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.default_opacity)
         """
 
         return self.widget.default_opacity
@@ -1330,7 +1330,7 @@ class CadViewer:
     def clip_intersection(self):
         """
         Get or set the CadViewerWidget traitlet `clip_intersection`
-        see [CadViewerWidget.clip_intersection](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_intersection)
+        see [CadViewerWidget.clip_intersection](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_intersection)
         """
 
         return self.widget.clip_intersection
@@ -1343,7 +1343,7 @@ class CadViewer:
     def clip_normal_0(self):
         """
         Get or set the CadViewerWidget traitlet `clip_normal_0`
-        see [CadViewerWidget.clip_normal_0](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_normal_0)
+        see [CadViewerWidget.clip_normal_0](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_normal_0)
         """
 
         return self.widget.clip_normal_0
@@ -1356,7 +1356,7 @@ class CadViewer:
     def clip_normal_1(self):
         """
         Get or set the CadViewerWidget traitlet `clip_normal_1`
-        see [CadViewerWidget.clip_normal_1](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_normal_1)
+        see [CadViewerWidget.clip_normal_1](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_normal_1)
         """
 
         return self.widget.clip_normal_1
@@ -1369,7 +1369,7 @@ class CadViewer:
     def clip_normal_2(self):
         """
         Get or set the CadViewerWidget traitlet `clip_normal_2`
-        see [CadViewerWidget.clip_normal_2](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_normal_2)
+        see [CadViewerWidget.clip_normal_2](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_normal_2)
         """
 
         return self.widget.clip_normal_2
@@ -1382,7 +1382,7 @@ class CadViewer:
     def clip_slider_0(self):
         """
         Get or set the CadViewerWidget traitlet `clip_slider_0`
-        see [CadViewerWidget.clip_slider_0](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_slider_0)
+        see [CadViewerWidget.clip_slider_0](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_slider_0)
         """
 
         return self.widget.clip_slider_0
@@ -1395,7 +1395,7 @@ class CadViewer:
     def clip_slider_1(self):
         """
         Get or set the CadViewerWidget traitlet `clip_slider_1`
-        see [CadViewerWidget.clip_slider_1](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_slider_1)
+        see [CadViewerWidget.clip_slider_1](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_slider_1)
         """
 
         return self.widget.clip_slider_1
@@ -1408,7 +1408,7 @@ class CadViewer:
     def clip_slider_2(self):
         """
         Get or set the CadViewerWidget traitlet `clip_slider_2`
-        see [CadViewerWidget.clip_slider_2](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_slider_2)
+        see [CadViewerWidget.clip_slider_2](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_slider_2)
         """
 
         return self.widget.clip_slider_2
@@ -1445,7 +1445,7 @@ class CadViewer:
     def clip_planes(self):
         """
         Get or set the CadViewerWidget traitlet `clip_planes`
-        see [CadViewerWidget.clip_planes](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_planes)
+        see [CadViewerWidget.clip_planes](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_planes)
         """
 
         return self.widget.clip_planes
@@ -1458,7 +1458,7 @@ class CadViewer:
     def clip_object_colors(self):
         """
         Get or set the CadViewerWidget traitlet `clip_object_colors`
-        see [CadViewerWidget.clip_planes](./widget.html#cad_viewer_widget.widget.CadViewerWidget.clip_object_colors)
+        see [CadViewerWidget.clip_planes](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.clip_object_colors)
         """
 
         return self.widget.clip_object_colors
@@ -1471,7 +1471,7 @@ class CadViewer:
     def debug(self):
         """
         Get or set the CadViewerWidget traitlet `debug`
-        see [CadViewerWidget.debug](./widget.html#cad_viewer_widget.widget.CadViewerWidget.debug)
+        see [CadViewerWidget.debug](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.debug)
         """
 
         return self.widget.debug
@@ -1484,7 +1484,7 @@ class CadViewer:
     def tools(self):
         """
         Get or set the CadViewerWidget traitlet `tools`
-        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget.widget.CadViewerWidget.tools)
+        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.tools)
         """
 
         return self.widget.tools
@@ -1497,7 +1497,7 @@ class CadViewer:
     def glass(self):
         """
         Get or set the CadViewerWidget traitlet `glass`
-        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget.widget.CadViewerWidget.glass)
+        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.glass)
         """
 
         return self.widget.glass
@@ -1510,7 +1510,7 @@ class CadViewer:
     def cad_width(self):
         """
         Get or set the CadViewerWidget traitlet `cad_width`
-        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget.widget.CadViewerWidget.cad_width)
+        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.cad_width)
         """
 
         return self.widget.cad_width
@@ -1523,7 +1523,7 @@ class CadViewer:
     def tree_width(self):
         """
         Get or set the CadViewerWidget traitlet `tree_width`
-        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget.widget.CadViewerWidget.tree_width)
+        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.tree_width)
         """
 
         return self.widget.tree_width
@@ -1536,7 +1536,7 @@ class CadViewer:
     def height(self):
         """
         Get or set the CadViewerWidget traitlet `height`
-        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget.widget.CadViewerWidget.height)
+        see [CadViewerWidget.tools](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.height)
         """
 
         return self.widget.height
@@ -1549,7 +1549,7 @@ class CadViewer:
     def pan_speed(self):
         """
         Get or set the CadViewerWidget traitlet `pan_speed`
-        see [CadViewerWidget.pan_speed](./widget.html#cad_viewer_widget.widget.CadViewerWidget.pan_speed)
+        see [CadViewerWidget.pan_speed](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.pan_speed)
         """
 
         return self.widget.pan_speed
@@ -1562,7 +1562,7 @@ class CadViewer:
     def rotate_speed(self):
         """
         Get or set the CadViewerWidget traitlet `rotate_speed`
-        see [CadViewerWidget.rotate_speed](./widget.html#cad_viewer_widget.widget.CadViewerWidget.rotate_speed)
+        see [CadViewerWidget.rotate_speed](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.rotate_speed)
         """
 
         return self.widget.rotate_speed
@@ -1575,7 +1575,7 @@ class CadViewer:
     def zoom_speed(self):
         """
         Get or set the CadViewerWidget traitlet `zoom_speed`
-        see [CadViewerWidget.zoom_speed](./widget.html#cad_viewer_widget.widget.CadViewerWidget.zoom_speed)
+        see [CadViewerWidget.zoom_speed](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.zoom_speed)
         """
 
         return self.widget.zoom_speed
@@ -1592,7 +1592,7 @@ class CadViewer:
     def zoom(self):
         """
         Get or set the CadViewerWidget traitlet `zoom`
-        see [CadViewerWidget.zoom](./widget.html#cad_viewer_widget.widget.CadViewerWidget.zoom)
+        see [CadViewerWidget.zoom](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.zoom)
         """
 
         return self.widget.zoom
@@ -1605,7 +1605,7 @@ class CadViewer:
     def position(self):
         """
         Get or set the CadViewerWidget traitlet `position`
-        see [CadViewerWidget.position](./widget.html#cad_viewer_widget.widget.CadViewerWidget.position)
+        see [CadViewerWidget.position](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.position)
         """
 
         return self.widget.position
@@ -1618,7 +1618,7 @@ class CadViewer:
     def quaternion(self):
         """
         Get or set the CadViewerWidget traitlet `quaternion`
-        see [CadViewerWidget.quaternion](./widget.html#cad_viewer_widget.widget.CadViewerWidget.quaternion)
+        see [CadViewerWidget.quaternion](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.quaternion)
         """
 
         return self.widget.quaternion
@@ -1634,7 +1634,7 @@ class CadViewer:
     def target(self):
         """
         Get or set the CadViewerWidget traitlet `target`
-        see [CadViewerWidget.position](./widget.html#cad_viewer_widget.widget.CadViewerWidget.target)
+        see [CadViewerWidget.position](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.target)
         """
 
         # self.update_camera_location()
@@ -1648,7 +1648,7 @@ class CadViewer:
     def last_pick(self):
         """
         Get or set the CadViewerWidget traitlet `lastPick`
-        see [CadViewerWidget.lastPick](./widget.html#cad_viewer_widget.widget.CadViewerWidget.lastPick)
+        see [CadViewerWidget.lastPick](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.lastPick)
         """
 
         return self.widget.lastPick
@@ -1657,7 +1657,7 @@ class CadViewer:
     def control(self):
         """
         Get or set the CadViewerWidget traitlet `control`
-        see [CadViewerWidget.control](./widget.html#cad_viewer_widget.widget.CadViewerWidget.control)
+        see [CadViewerWidget.control](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.control)
         """
 
         return self.widget.control
@@ -1666,7 +1666,7 @@ class CadViewer:
     def up(self):
         """
         Get or set the CadViewerWidget traitlet `up`
-        see [CadViewerWidget.up](./widget.html#cad_viewer_widget.widget.CadViewerWidget.up)
+        see [CadViewerWidget.up](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.up)
         """
 
         return self.widget.up
@@ -1675,7 +1675,7 @@ class CadViewer:
     def pinning(self):
         """
         Get or set the CadViewerWidget traitlet `pinning`
-        see [CadViewerWidget.pinning](./widget.html#cad_viewer_widget.widget.CadViewerWidget.pinning)
+        see [CadViewerWidget.pinning](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.pinning)
         """
         return self.widget.pinning
 
@@ -1687,7 +1687,7 @@ class CadViewer:
     def collapse(self):
         """
         Get or set the CadViewerWidget traitlet `collapse`
-        see [CadViewerWidget.collapse](./widget.html#cad_viewer_widget.widget.CadViewerWidget.collapse)
+        see [CadViewerWidget.collapse](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.collapse)
         """
         return COLLAPSE[self.widget.collapse]
 
@@ -1705,7 +1705,7 @@ class CadViewer:
     def keymap(self):
         """
         Get or set the CadViewerWidget traitlet `keymap`
-        see [CadViewerWidget.keymap](./widget.html#cad_viewer_widget.widget.CadViewerWidget.keymap)
+        see [CadViewerWidget.keymap](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.keymap)
         """
         return self.widget.keymap
 
@@ -1717,7 +1717,7 @@ class CadViewer:
     def new_tree_behavior(self):
         """
         Get or set the CadViewerWidget traitlet `new_tree_behavior`
-        see [CadViewerWidget.new_tree_behavior](./widget.html#cad_viewer_widget.widget.CadViewerWidget.new_tree_behavior)
+        see [CadViewerWidget.new_tree_behavior](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.new_tree_behavior)
         """
         return self.widget.new_tree_behavior
 
@@ -1803,7 +1803,7 @@ class CadViewer:
         Parameters
         ----------
         track: AnimationTrack
-            Animation track, see [AnimationTrack](/widget.html#cad_viewer_widget.widget.AnimationTrack)
+            Animation track, see [AnimationTrack](/widget.html#cad_viewer_widget_marimo.widget.AnimationTrack)
         """
 
         self.tracks.append(self._check_track(track))
@@ -1815,7 +1815,7 @@ class CadViewer:
         Parameters
         ----------
         tracks: list of AnimationTrack
-            List of Animation tracks, see [AnimationTrack](/widget.html#cad_viewer_widget.widget.AnimationTrack)
+            List of Animation tracks, see [AnimationTrack](/widget.html#cad_viewer_widget_marimo.widget.AnimationTrack)
         """
         checked_tracks = (
             [] if tracks is None else [self._check_track(track) for track in tracks]
@@ -1883,7 +1883,7 @@ class CadViewer:
     def tab(self):
         """
         Get or set the CadViewerWidget traitlet `tab`
-        see [CadViewerWidget.tab](./widget.html#cad_viewer_widget.widget.CadViewerWidget.tab)
+        see [CadViewerWidget.tab](./widget.html#cad_viewer_widget_marimo.widget.CadViewerWidget.tab)
         """
         return self.widget.tab
 

@@ -361,7 +361,7 @@ def _(mo):
 
 @app.cell
 def _():
-    from cad_viewer_widget import show, CadViewer
+    from cad_viewer_widget_marimo import show, CadViewer
 
     return CadViewer, show
 

@@ -1,5 +1,5 @@
 {
-  "name": "cad-viewer-widget",
+  "name": "cad-viewer-widget-marimo",
   "version": "3.0.2",
   "description": "A marimo-focused CAD viewer runtime",
   "license": "MIT",

@@ -46,11 +46,11 @@ endif
 dist:
 	@rm -f dist/*
 	@rm -f js/dist/*
-	@rm -fr cad_viewer_widget/labextension/*
+	@rm -fr cad_viewer_widget_marimo/labextension/*
 	hatch build
 
 docs:
-	@pdoc3 --force --config show_source_code=False --html --output-dir docs cad_viewer_widget
+	@pdoc3 --force --config show_source_code=False --html --output-dir docs cad_viewer_widget_marimo
 
 release:
 	git add .
@@ -59,13 +59,13 @@ release:
 	git tag -a v$(CURRENT_VERSION) -m "Latest release: $(CURRENT_VERSION)"
 
 create-release:
-	@github-release release -u bernhard-42 -r cad-viewer-widget -t v$(CURRENT_VERSION) -n cad-viewer-widget-$(CURRENT_VERSION)
+	@github-release release -u bernhard-42 -r cad-viewer-widget-marimo -t v$(CURRENT_VERSION) -n cad-viewer-widget-marimo-$(CURRENT_VERSION)
 	@sleep 2
-	@github-release upload  -u bernhard-42 -r cad-viewer-widget -t v$(CURRENT_VERSION) -n cad_viewer_widget-$(CURRENT_VERSION).tar.gz -f dist/cad_viewer_widget-$(CURRENT_VERSION).tar.gz
-	@github-release upload  -u bernhard-42 -r cad-viewer-widget -t v$(CURRENT_VERSION) -n cad_viewer_widget-$(CURRENT_VERSION)-py3-none-any.whl -f dist/cad_viewer_widget-$(CURRENT_VERSION)-py3-none-any.whl
+	@github-release upload  -u bernhard-42 -r cad-viewer-widget-marimo -t v$(CURRENT_VERSION) -n cad_viewer_widget_marimo-$(CURRENT_VERSION).tar.gz -f dist/cad_viewer_widget_marimo-$(CURRENT_VERSION).tar.gz
+	@github-release upload  -u bernhard-42 -r cad-viewer-widget-marimo -t v$(CURRENT_VERSION) -n cad_viewer_widget_marimo-$(CURRENT_VERSION)-py3-none-any.whl -f dist/cad_viewer_widget_marimo-$(CURRENT_VERSION)-py3-none-any.whl
 
 install: dist
-	@echo "=> Installing cad-viewer-widget"
+	@echo "=> Installing cad-viewer-widget-marimo"
 	@pip install --upgrade .
 
 check_dist:

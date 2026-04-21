@@ -3,7 +3,7 @@ requires = ["hatchling>=1.5.0", "hatch-nodejs-version"]
 build-backend = "hatchling.build"
 
 [project]
-name = "cad_viewer_widget"
+name = "cad_viewer_widget_marimo"
 readme = "README.md"
 license = { file = "LICENSE" }
 requires-python = ">=3.8"
@@ -32,7 +32,7 @@ path = "js/package.json"
 exclude = [".github", "binder", "examples", "docs", "notebooks", ".[a-z]*"]
 
 [tool.hatch.build.hooks.version]
-path = "cad_viewer_widget/_version.py"
+path = "cad_viewer_widget_marimo/_version.py"
 
 [tool.check-wheel-contents]
 ignore = ["W002"]
@@ -61,12 +61,12 @@ post_commit_hooks = []
 [[tool.bumpversion.part.build]]
 
 [[tool.bumpversion.files]]
-filename = "cad_viewer_widget/_version.py"
+filename = "cad_viewer_widget_marimo/_version.py"
 search = 'VERSION = "{current_version}"'
 replace = 'VERSION = "{new_version}"'
 
 [[tool.bumpversion.files]]
-filename = "cad_viewer_widget/widget.py"
+filename = "cad_viewer_widget_marimo/widget.py"
 search = '_module_version = Unicode("{current_version}"'
 replace = '_module_version = Unicode("{new_version}"'
 
@@ -82,5 +82,5 @@ replace = '_version = "{new_version}"'
 
 [[tool.bumpversion.files]]
 filename = "environment.yml"
-search = 'cad-viewer-widget=={current_version}'
-replace = 'cad-viewer-widget=={new_version}'
+search = 'cad-viewer-widget-marimo=={current_version}'
+replace = 'cad-viewer-widget-marimo=={new_version}'

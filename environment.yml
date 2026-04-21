@@ -1,4 +1,4 @@
-name: cad-viewer-widget
+name: cad-viewer-widget-marimo
 channels:
   - defaults
   - conda-forge
