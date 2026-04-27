@@ -55,7 +55,9 @@ def get_viewers_by_id():
 
 def _load_anywidget_esm():
         """Build an AnyWidget Front-End Module around the existing webpack bundle."""
-        bundle_path = Path(__file__).resolve().parents[1] / "js" / "dist" / "index.js"
+        from importlib.resources import files
+        _static = files("cad_viewer_widget").joinpath("static")
+        bundle_path = Path(str(_static.joinpath("index.js")))
         if not bundle_path.exists():
                 return dedent(
                         """
@@ -306,7 +308,8 @@ def _get_widget_class():
     try:
         import anywidget
 
-        css_path = Path(__file__).resolve().parents[1] / "js" / "dist" / "index.css"
+        from importlib.resources import files
+        css_path = Path(str(files("cad_viewer_widget").joinpath("static/index.css")))
 
         class AnyCadViewerWidget(anywidget.AnyWidget, CadViewerWidget):
             _esm = esm

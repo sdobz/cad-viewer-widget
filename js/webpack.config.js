@@ -16,7 +16,7 @@ module.exports = {
   entry: "./lib/index.js",
   output: {
     filename: "index.js",
-    path: path.resolve(__dirname, "dist"),
+    path: path.resolve(__dirname, "..", "cad_viewer_widget", "static"),
     publicPath: "auto",
     library: {
       name: "CadViewerWidget",

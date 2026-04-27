@@ -5,7 +5,6 @@ import gzip
 import hashlib
 from html import escape
 from pathlib import Path
-from typing import Optional
 from uuid import uuid4
 
 import numpy as np
@@ -43,19 +42,6 @@ def _orjson_default(obj):
     raise TypeError(f"Type is not JSON serializable: {type(obj)}")
 
 
-def _bundle_path() -> Optional[Path]:
-    """Return the local bundle path for marimo rendering."""
-    root = Path(__file__).resolve().parents[1]
-    candidates = [
-        root / "js" / "dist" / "index.js",
-        Path(__file__).resolve().parent / "static" / "index.js",
-    ]
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return None
-
-
 def _viewer_state(viewer) -> dict:
     """Collect a stateless snapshot for JS initialization."""
     state = viewer.status(all=True)
@@ -74,7 +60,9 @@ def _gzip_b64(data: bytes) -> str:
 
 def cadviewer_to_html(viewer) -> str:
     """Serialize a CadViewer into compact self-contained marimo HTML."""
-    bundle = _bundle_path()
+    from importlib.resources import files
+    _bundle = Path(str(files("cad_viewer_widget").joinpath("static/index.js")))
+    bundle = _bundle if _bundle.exists() else None
     state = _viewer_state(viewer)
 
     state_bytes = orjson.dumps(state, default=_orjson_default)
@@ -178,7 +166,3 @@ def cadviewer_to_html(viewer) -> str:
 </script>
 """
 
-
-def make_cadviewer_displayable(viewer):
-    """Backward-compatible helper used by notebooks/tests."""
-    return cadviewer_to_html(viewer)

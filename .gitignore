@@ -3,7 +3,6 @@ __marimo__
 .venv
 *.egg-info/
 .ipynb_checkpoints/
-dist/
 build/
 *.py[cod]
 node_modules/
@@ -14,6 +13,7 @@ node_modules/
 .mamba
 
 # Compiled javascript
+cad_viewer_widget/static
 
 # OS X
 .DS_Store
